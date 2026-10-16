@@ -38,7 +38,7 @@ export default function Workbench({ name, email }: WorkbenchProps) {
   const [aiChat, setAiChat] = useState<Array<{ role: 'user' | 'assistant'; text: string; sources?: string[] }>>([
     {
       role: 'assistant',
-      text: 'Xin chào kỹ sư! Tôi là trợ lý AI BIM Tuyến 2027. Tôi hỗ trợ giải đáp kỹ thuật Civil 3D, Navisworks, InfraWorks, QGIS và 4D/5D có dẫn nguồn trực tiếp từ 24 chương giáo trình thực hành và tài liệu Google Drive.',
+      text: 'Xin chào kỹ sư! Tôi là trợ lý AI BIM Coaching 2027. Tôi hỗ trợ giải đáp kỹ thuật Civil 3D, Navisworks, InfraWorks, QGIS và 4D/5D có dẫn nguồn trực tiếp từ 24 chương giáo trình thực hành và tài liệu Google Drive.',
       sources: ['Giáo trình thực hành BIM Tuyến 2027', 'Autodesk Official Help 2027', 'G:\\My Drive\\my\\Hoctap']
     }
   ]);
@@ -214,24 +214,24 @@ export default function Workbench({ name, email }: WorkbenchProps) {
   return (
     <div className="flex flex-col h-screen w-screen overflow-hidden bg-[#0c1017] text-slate-200 font-sans antialiased select-none">
       
-      {/* ─── TOPBAR HEADER (CHUẨN CIVIL NOTEBOOK 100%) ────────────────────────── */}
+      {/* ─── TOPBAR HEADER (BIM COACHING 2027) ─────────────────────────────────── */}
       <header className="h-14 border-b border-[#232d3f] bg-[#131822] px-4 flex items-center justify-between shrink-0 z-20">
-        {/* Brand / Logo */}
+        {/* Brand / Logo: BIM COACHING */}
         <div className="flex items-center space-x-3">
           <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-sky-500 to-blue-600 flex items-center justify-center shadow-lg shadow-sky-500/20 text-white font-bold text-base">
             <svg className="w-5 h-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
             </svg>
           </div>
           <div>
             <div className="flex items-center space-x-2">
-              <span className="font-bold text-white tracking-wide text-sm font-mono">CIVIL NOTEBOOK</span>
+              <span className="font-bold text-white tracking-wide text-sm font-mono">BIM COACHING</span>
               <span className="px-1.5 py-0.5 text-[10px] uppercase font-semibold bg-sky-950 text-sky-400 border border-sky-800 rounded font-mono">
-                BIM 2027 PRO
+                2027 PRO
               </span>
             </div>
             <div className="text-[11px] text-slate-400">
-              Sổ tay kinh nghiệm & giải pháp kỹ thuật BIM Tuyến & Hạ tầng GIS
+              Giáo trình Thực hành & Huấn luyện BIM Tuyến, Hạ tầng GIS
             </div>
           </div>
         </div>
@@ -246,7 +246,7 @@ export default function Workbench({ name, email }: WorkbenchProps) {
               <svg className="w-4 h-4 text-slate-500 group-hover:text-sky-400 transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
               </svg>
-              <span>Tìm nhanh theo lệnh, lỗi, giải pháp...</span>
+              <span>Tìm nhanh bài học, lệnh CAD, quy trình, lỗi...</span>
             </div>
             <kbd className="px-1.5 py-0.5 text-[10px] bg-[#1a2332] text-slate-300 border border-[#2d3a4f] rounded font-mono">
               Ctrl + K
@@ -277,7 +277,7 @@ export default function Workbench({ name, email }: WorkbenchProps) {
             <span>Đồng bộ</span>
           </button>
 
-          {/* New Case / Note Button */}
+          {/* New Note Button */}
           <button
             onClick={() => {
               setIsRightPanelOpen(true);
@@ -311,13 +311,13 @@ export default function Workbench({ name, email }: WorkbenchProps) {
       {/* ─── MAIN WORKSPACE (2 HOẶC 3 CỘT) ──────────────────────────────────── */}
       <div className="flex-1 flex overflow-hidden">
         
-        {/* ─── CỘT TRÁI: SIDEBAR DANH SÁCH CA KINH NGHIỆM / BÀI HỌC ───────────── */}
+        {/* ─── CỘT TRÁI: SIDEBAR DANH SÁCH BÀI THỰC HÀNH ───────────────────────── */}
         <aside className="w-80 border-r border-[#232d3f] bg-[#131822] flex flex-col shrink-0">
           
-          {/* Bộ lọc Chuyên mục Civil (Dropdown chuẩn Civil Notebook) */}
+          {/* Bộ lọc Chuyên mục Phân hệ */}
           <div className="p-3 border-b border-[#232d3f]">
             <label className="block text-[11px] font-semibold uppercase tracking-wider text-slate-400 mb-1.5">
-              Nhóm Kỹ thuật Civil
+              Phân hệ Kỹ thuật BIM & GIS
             </label>
             <div className="relative">
               <select
@@ -325,7 +325,7 @@ export default function Workbench({ name, email }: WorkbenchProps) {
                 onChange={(e) => setSoftwareFilter(e.target.value)}
                 className="w-full text-xs bg-[#0c1017] text-slate-200 border border-[#232d3f] rounded-lg px-2.5 py-1.5 focus:outline-none focus:border-sky-500 appearance-none cursor-pointer"
               >
-                <option value="all">📂 Tất cả các nhóm (All Groups)</option>
+                <option value="all">📂 Tất cả phân hệ (All Software)</option>
                 <option value="Civil 3D">🛣️ Civil 3D — Thiết kế tuyến & San nền</option>
                 <option value="Navisworks">🔍 Navisworks — Phối hợp & Clash Test</option>
                 <option value="InfraWorks">🌐 InfraWorks — Mô phỏng bối cảnh 3D</option>
@@ -345,7 +345,7 @@ export default function Workbench({ name, email }: WorkbenchProps) {
             <div className="relative">
               <input
                 type="text"
-                placeholder="Lọc danh sách..."
+                placeholder="Lọc bài học theo tên, lệnh, thao tác..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="w-full text-xs bg-[#0c1017] text-slate-200 border border-[#232d3f] rounded-md pl-8 pr-2.5 py-1.5 focus:outline-none focus:border-sky-500 placeholder-slate-500"
@@ -356,7 +356,7 @@ export default function Workbench({ name, email }: WorkbenchProps) {
             </div>
           </div>
 
-          {/* Danh sách Thẻ Cases (Case Cards y hệt Civil Notebook) */}
+          {/* Danh sách Thẻ Bài học */}
           <div className="flex-1 overflow-y-auto p-2 space-y-1.5 scrollbar-thin">
             {filteredLessons.map((lesson) => {
               const isSelected = lesson.id === activeLessonId;
@@ -381,7 +381,7 @@ export default function Workbench({ name, email }: WorkbenchProps) {
                         <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                         </svg>
-                        <span>verified</span>
+                        <span>hoàn thành</span>
                       </span>
                     ) : (
                       <span className="text-[10px] text-slate-500 font-mono">
@@ -397,26 +397,26 @@ export default function Workbench({ name, email }: WorkbenchProps) {
                     <span>•</span>
                     <span>Chương {lesson.chapterOrder}</span>
                     <span>•</span>
-                    <span>Rev 1</span>
+                    <span>{lesson.minutes} phút</span>
                   </div>
                 </div>
               );
             })}
           </div>
 
-          {/* Sidebar Footer (Tổng số ca) */}
+          {/* Sidebar Footer */}
           <div className="p-2.5 border-t border-[#232d3f] bg-[#0c1017] flex items-center justify-between text-[11px] text-slate-400">
-            <span className="font-mono text-sky-400">Tổng số: {filteredLessons.length} ca</span>
-            <span className="text-slate-500">Sẵn sàng tra cứu</span>
+            <span className="font-mono text-sky-400">Tổng số: {filteredLessons.length} bài</span>
+            <span className="text-slate-500">Sẵn sàng huấn luyện</span>
           </div>
         </aside>
 
-        {/* ─── CỘT GIỮA: RIGHT CANVAS (VIEWER CHI TIẾT CA CHUẨN CIVIL NOTEBOOK) ── */}
+        {/* ─── CỘT GIỮA: RIGHT CANVAS (VIEWER CHI TIẾT BÀI HỌC) ────────────────── */}
         <main className="flex-1 bg-[#0c1017] flex flex-col overflow-hidden">
           
           <div className="flex-1 overflow-y-auto p-6 max-w-4xl mx-auto w-full scrollbar-thin">
             
-            {/* Header Ca Kinh nghiệm */}
+            {/* Header Bài học */}
             <div className="border-b border-[#232d3f] pb-5 mb-6">
               <div className="flex items-center justify-between mb-3">
                 <div className="flex items-center space-x-2.5">
@@ -427,9 +427,9 @@ export default function Workbench({ name, email }: WorkbenchProps) {
                     <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
                     </svg>
-                    <span>{lessonProgress[currentLesson.id] === 'completed' ? 'verified_live' : 'verified'}</span>
+                    <span>{lessonProgress[currentLesson.id] === 'completed' ? 'đã hoàn thành' : 'đang học'}</span>
                   </span>
-                  <span className="text-xs text-slate-400 font-mono">Revision 1</span>
+                  <span className="text-xs text-slate-400 font-mono">Chương {currentLesson.chapterOrder}</span>
                   <span className="text-xs text-slate-500 font-mono">• Thời lượng: {currentLesson.minutes} phút</span>
                 </div>
 
@@ -455,7 +455,7 @@ export default function Workbench({ name, email }: WorkbenchProps) {
                   <svg className="w-3.5 h-3.5 text-sky-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
                   </svg>
-                  <span>{lessonProgress[currentLesson.id] === 'completed' ? '✓ Đã hoàn tất ca' : 'Đánh dấu hoàn thành'}</span>
+                  <span>{lessonProgress[currentLesson.id] === 'completed' ? '✓ Đã hoàn thành' : 'Đánh dấu hoàn thành'}</span>
                 </button>
               </div>
 
@@ -475,7 +475,7 @@ export default function Workbench({ name, email }: WorkbenchProps) {
                   Chương {currentLesson.chapterOrder}
                 </span>
                 <span className="px-2 py-0.5 text-[11px] font-medium bg-[#18202d] text-slate-400 border border-[#232d3f] rounded font-mono">
-                  Civil 3D 2020-2027
+                  Phiên bản 2027
                 </span>
                 <span className="px-2 py-0.5 text-[11px] font-medium bg-[#18202d] text-slate-400 border border-[#232d3f] rounded font-mono">
                   {currentLesson.deliverable}
@@ -483,44 +483,46 @@ export default function Workbench({ name, email }: WorkbenchProps) {
               </div>
             </div>
 
-            {/* Section Vấn đề & Nguyên nhân (2 Cột chuẩn Civil Notebook) */}
+            {/* Section Mục tiêu & Điều kiện tiên quyết (2 Cột) */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
               <div className="p-4 rounded-xl border border-amber-900/40 bg-amber-950/15">
                 <div className="flex items-center space-x-2 text-amber-400 font-semibold text-xs mb-2">
                   <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
                   </svg>
-                  <span>VẤN ĐỀ / HIỆN TƯỢNG</span>
+                  <span>MỤC TIÊU & YÊU CẦU ĐẦU RA</span>
                 </div>
                 <p className="text-xs text-slate-200 leading-relaxed font-mono whitespace-pre-wrap">
-                  {currentLesson.mistakes[0]?.symptom || currentLesson.objective}
+                  {currentLesson.objective}
                 </p>
               </div>
 
               <div className="p-4 rounded-xl border border-sky-900/40 bg-sky-950/15">
                 <div className="flex items-center space-x-2 text-sky-400 font-semibold text-xs mb-2">
                   <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
                   </svg>
-                  <span>NGUYÊN NHÂN KỸ THUẬT</span>
+                  <span>ĐIỀU KIỆN TIÊN QUYẾT & ĐẦU VÀO</span>
                 </div>
-                <p className="text-xs text-slate-200 leading-relaxed font-mono whitespace-pre-wrap">
-                  {currentLesson.mistakes[0]?.fix || `Đặc tính thiết kế và luồng xử lý dữ liệu chuẩn của ${currentLesson.software}.`}
-                </p>
+                <ul className="text-xs text-slate-200 space-y-1 font-mono">
+                  {currentLesson.prerequisites.map((p, i) => (
+                    <li key={i}>• {p}</li>
+                  ))}
+                </ul>
               </div>
             </div>
 
-            {/* Section Quy trình Xử lý Chuẩn (ĐÃ BỎ SƠ ĐỒ KHOANH ĐỎ) */}
+            {/* Section Quy trình Thực hành Chuẩn */}
             <div className="mb-6">
               <div className="flex items-center justify-between mb-3">
                 <div className="flex items-center space-x-2 text-emerald-400 font-bold text-sm">
                   <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
                   </svg>
-                  <span>QUY TRÌNH XỬ LÝ CHUẨN</span>
+                  <span>QUY TRÌNH THỰC HÀNH TỪNG BƯỚC ({currentLesson.steps.length} BƯỚC)</span>
                 </div>
                 <span className="text-[11px] text-slate-400">
-                  Tick từng bước để xác nhận kiểm soát
+                  Tick từng bước để kiểm soát tiến độ
                 </span>
               </div>
 
@@ -572,7 +574,7 @@ export default function Workbench({ name, email }: WorkbenchProps) {
 
                         {/* Kết quả mong đợi */}
                         <div className="text-[11px] text-emerald-400 flex items-center space-x-1.5 font-medium">
-                          <span className="text-emerald-500">✓ Kết quả:</span>
+                          <span className="text-emerald-500">✓ Kết quả cần thấy:</span>
                           <span>{step.expected}</span>
                         </div>
                       </div>
@@ -590,7 +592,7 @@ export default function Workbench({ name, email }: WorkbenchProps) {
                   <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
                   </svg>
-                  <span>CẢNH BÁO KỸ THUẬT & LƯU Ý QUAN TRỌNG</span>
+                  <span>CẢNH BÁO KỸ THUẬT & LỖI THƯỜNG GẶP</span>
                 </div>
                 <ul className="list-disc list-inside text-xs text-slate-200 space-y-1 font-mono">
                   {currentLesson.mistakes.map((m, i) => (
@@ -605,7 +607,7 @@ export default function Workbench({ name, email }: WorkbenchProps) {
                   <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                   </svg>
-                  <span>TIÊU CHÍ NGHIỆM THU KIỂM TRA</span>
+                  <span>TIÊU CHÍ KIỂM TRA CHẤT LƯỢNG (QA CHECK)</span>
                 </div>
                 <ul className="list-disc list-inside text-xs text-slate-200 space-y-1 font-mono">
                   {currentLesson.checks.map((chk, i) => (

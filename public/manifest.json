@@ -1,7 +1,7 @@
 {
-  "name": "BIM Notebook — Sổ tay Kỹ thuật Thực hành BIM Tuyến 2027",
-  "short_name": "BIM Notebook",
-  "description": "Sổ tay kỹ thuật thực hành BIM Tuyến 2027: Civil 3D, Navisworks, InfraWorks, QGIS",
+  "name": "BIM Coaching — Giáo trình Thực hành BIM Tuyến 2027",
+  "short_name": "BIM Coaching",
+  "description": "Hệ thống huấn luyện & thực hành chuyên sâu BIM Tuyến: Civil 3D, Navisworks, InfraWorks, QGIS và 4D/5D.",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#0c1017",
