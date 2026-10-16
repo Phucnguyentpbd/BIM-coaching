@@ -1,4 +1,5 @@
 import type { Chapter, Lesson, Step } from './types';
+export { infraGisSources } from './sources-infra-gis';
 
 const step = (title: string, action: string, expected: string): Step => ({ title, action, expected });
 const lesson = (id: string, title: string, objective: string, prerequisites: string[], steps: Step[], checks: string[], mistakes: [string, string][], exercise: string, deliverable: string, sourceIds: string[], diagram?: Lesson['diagram']): Lesson => ({

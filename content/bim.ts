@@ -1,4 +1,5 @@
 import type { Chapter, Lesson, Step } from './types';
+export { bimSources } from './sources-bim';
 
 // Giáo trình thực hành chuẩn hóa cho kỹ sư BIM Tuyến 2027
 const steps = (rows: [string, string, string][]): Step[] => rows.map(([title, action, expected]) => ({ title, action, expected }));
