@@ -21,4 +21,7 @@ export const infraGisSources: Source[] = [
   { id: 'qgis-layout', title: 'QGIS — Print Layout overview and export', url: 'https://docs.qgis.org/3.40/en/docs/user_manual/print_composer/overview_composer.html', kind: 'official', version: 'QGIS 3.40; đối chiếu bản cài' },
   { id: 'qgis-manual', title: 'QGIS 3.40 Desktop User Guide — PDF', url: 'https://docs.qgis.org/3.40/pdf/en/QGIS-3.40-DesktopUserGuide-en.pdf', kind: 'official', version: 'QGIS 3.40; không gán số trang chưa đối chiếu' },
   { id: 'google-mymaps', title: 'Google My Maps — Import map features from a file', url: 'https://support.google.com/mymaps/answer/3024836?hl=en', kind: 'official', version: 'Kiểm tra 16/10/2026; hạn mức có thể đổi' },
+  { id: 'drive-bimgis', title: 'Hướng dẫn tổng hợp mô hình BIM-GIS (Google Gemini)', url: 'file:///G:/My%20Drive/my/Hoctap/H%C6%B0%E1%BB%9Bng_D%E1%BA%ABn_T%E1%BB%95ng_H%E1%BB%A3p_M%C3%B4_H%C3%ACnh_BIM_GIS_Google_Gemini.pdf', kind: 'drive', version: 'Tài liệu thực hành BIM-GIS — 888 KB' },
+  { id: 'drive-dem', title: 'Dữ liệu mô hình số độ cao DEM Bình Định (GeoTIFF)', url: 'file:///G:/My%20Drive/my/GIS/Binh%20Dinh_DEM', kind: 'drive', version: 'Raster độ cao phục vụ InfraWorks và QGIS' },
+  { id: 'drive-ranh', title: 'Dữ liệu vector Ranh hành chính mới nhất (Bình Định)', url: 'file:///G:/My%20Drive/my/GIS/Ranh%20hanh%20chinh%20moi%202025', kind: 'drive', version: 'Shapefile/GeoPackage ranh hành chính các cấp' },
 ];
