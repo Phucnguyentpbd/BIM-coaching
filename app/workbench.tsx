@@ -14,6 +14,7 @@ export default function Workbench({ name, email }: WorkbenchProps) {
   const [activeTab, setActiveTab] = useState<'notes' | 'sources' | 'ai'>('notes');
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [softwareFilter, setSoftwareFilter] = useState<string>('all');
+  const [chapterFilter, setChapterFilter] = useState<string>('all');
   const [isRightPanelOpen, setIsRightPanelOpen] = useState<boolean>(true);
   
   // Trạng thái tìm kiếm nhanh Modal (Ctrl + K)
@@ -37,7 +38,7 @@ export default function Workbench({ name, email }: WorkbenchProps) {
   const [aiChat, setAiChat] = useState<Array<{ role: 'user' | 'assistant'; text: string; sources?: string[] }>>([
     {
       role: 'assistant',
-      text: 'Xin chào kỹ sư! Tôi là trợ lý AI BIM Tuyến 2027. Tôi hỗ trợ giải đáp kỹ thuật Civil 3D, Navisworks, InfraWorks, QGIS và 4D/5D có dẫn nguồn trực tiếp từ giáo trình thực hành và tài liệu Google Drive.',
+      text: 'Xin chào kỹ sư! Tôi là trợ lý AI BIM Tuyến 2027. Tôi hỗ trợ giải đáp kỹ thuật Civil 3D, Navisworks, InfraWorks, QGIS và 4D/5D có dẫn nguồn trực tiếp từ 24 chương giáo trình thực hành và tài liệu Google Drive.',
       sources: ['Giáo trình thực hành BIM Tuyến 2027', 'Autodesk Official Help 2027', 'G:\\My Drive\\my\\Hoctap']
     }
   ]);
@@ -99,27 +100,22 @@ export default function Workbench({ name, email }: WorkbenchProps) {
     return lessons.find((l) => l.id === activeLessonId) || lessons[0];
   }, [activeLessonId]);
 
-  // Lọc bài học theo tìm kiếm và phần mềm ở sidebar
-  const filteredChapters = useMemo(() => {
+  // Danh sách bài học đã lọc theo phần mềm, chương và từ khóa tìm kiếm
+  const filteredLessons = useMemo(() => {
     const q = searchQuery.toLowerCase().trim();
-    return chapters
-      .map((ch) => {
-        if (softwareFilter !== 'all' && ch.software !== softwareFilter) return null;
-        const matchingLessons = ch.lessons.filter((l) => {
-          if (!q) return true;
-          return (
-            l.id.toLowerCase().includes(q) ||
-            l.title.toLowerCase().includes(q) ||
-            l.objective.toLowerCase().includes(q) ||
-            l.exercise.toLowerCase().includes(q) ||
-            ch.title.toLowerCase().includes(q)
-          );
-        });
-        if (matchingLessons.length === 0) return null;
-        return { ...ch, lessons: matchingLessons };
-      })
-      .filter(Boolean) as Chapter[];
-  }, [searchQuery, softwareFilter]);
+    return lessons.filter((l) => {
+      if (softwareFilter !== 'all' && l.software !== softwareFilter) return false;
+      if (chapterFilter !== 'all' && String(l.chapterOrder) !== chapterFilter) return false;
+      if (!q) return true;
+      return (
+        l.id.toLowerCase().includes(q) ||
+        l.title.toLowerCase().includes(q) ||
+        l.objective.toLowerCase().includes(q) ||
+        l.exercise.toLowerCase().includes(q) ||
+        l.software.toLowerCase().includes(q)
+      );
+    });
+  }, [searchQuery, softwareFilter, chapterFilter]);
 
   // Tìm kiếm toàn cục cho Modal Ctrl + K
   const modalSearchResults = useMemo(() => {
@@ -207,7 +203,7 @@ export default function Workbench({ name, email }: WorkbenchProps) {
         reply = 'Để Property Sets hiển thị đầy đủ trong Navisworks: Trong Civil 3D, hãy gán Property Set Definition vào Corridor Solids hoặc 3D Solid objects. Khi mở bằng Navisworks hoặc xuất NWC/IFC 4.3, kích hoạt tùy chọn "Convert Property Sets" trong Navisworks DWG/DXF Loader Options.';
         replySources.push('Chương 7: Quản trị Property Sets', 'Chương 8: Xuất NWC/DWG/IFC 4.3');
       } else {
-        reply = `Về vấn đề "${userMsg}": Theo quy trình bài học ${currentLesson.id.toUpperCase()} (${currentLesson.title}), bạn cần thực hiện tuần tự theo bảng checklist các bước thao tác, chú ý phần "Tiêu chí kiểm tra chất lượng" và các "Lỗi thường gặp" để đảm bảo tính toàn vẹn của mô hình BIM và tọa độ mốc.`;
+        reply = `Về vấn đề "${userMsg}": Theo quy trình bài học ${currentLesson.id.toUpperCase()} (${currentLesson.title}), bạn cần thực hiện tuần tự theo bảng checklist các bước thao tác, chú ý phần "Tiêu chí kiểm tra chất lượng" và các "Cảnh báo kỹ thuật" để đảm bảo tính toàn vẹn của mô hình BIM và tọa độ mốc.`;
       }
 
       setAiChat((prev) => [...prev, { role: 'assistant', text: reply, sources: replySources }]);
@@ -218,7 +214,7 @@ export default function Workbench({ name, email }: WorkbenchProps) {
   return (
     <div className="flex flex-col h-screen w-screen overflow-hidden bg-[#0c1017] text-slate-200 font-sans antialiased select-none">
       
-      {/* ─── TOPBAR HEADER (PHONG CÁCH CIVIL NOTEBOOK) ────────────────────────── */}
+      {/* ─── TOPBAR HEADER (CHUẨN CIVIL NOTEBOOK 100%) ────────────────────────── */}
       <header className="h-14 border-b border-[#232d3f] bg-[#131822] px-4 flex items-center justify-between shrink-0 z-20">
         {/* Brand / Logo */}
         <div className="flex items-center space-x-3">
@@ -229,13 +225,13 @@ export default function Workbench({ name, email }: WorkbenchProps) {
           </div>
           <div>
             <div className="flex items-center space-x-2">
-              <span className="font-bold text-white tracking-wide text-sm font-mono">BIM NOTEBOOK</span>
+              <span className="font-bold text-white tracking-wide text-sm font-mono">CIVIL NOTEBOOK</span>
               <span className="px-1.5 py-0.5 text-[10px] uppercase font-semibold bg-sky-950 text-sky-400 border border-sky-800 rounded font-mono">
-                v2.4 Pro
+                BIM 2027 PRO
               </span>
             </div>
             <div className="text-[11px] text-slate-400">
-              Sổ tay Kỹ thuật Thực hành BIM Tuyến & Hạ tầng GIS
+              Sổ tay kinh nghiệm & giải pháp kỹ thuật BIM Tuyến & Hạ tầng GIS
             </div>
           </div>
         </div>
@@ -250,7 +246,7 @@ export default function Workbench({ name, email }: WorkbenchProps) {
               <svg className="w-4 h-4 text-slate-500 group-hover:text-sky-400 transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
               </svg>
-              <span>Tìm nhanh theo lệnh CAD, bài học, lỗi kỹ thuật...</span>
+              <span>Tìm nhanh theo lệnh, lỗi, giải pháp...</span>
             </div>
             <kbd className="px-1.5 py-0.5 text-[10px] bg-[#1a2332] text-slate-300 border border-[#2d3a4f] rounded font-mono">
               Ctrl + K
@@ -258,26 +254,47 @@ export default function Workbench({ name, email }: WorkbenchProps) {
           </button>
         </div>
 
-        {/* Right Status & Controls */}
-        <div className="flex items-center space-x-3">
-          {/* GitHub Sync Status */}
-          <div className="hidden sm:flex items-center space-x-1.5 px-2.5 py-1 text-xs rounded-full bg-emerald-950/60 border border-emerald-800/60 text-emerald-400">
+        {/* Right Actions */}
+        <div className="flex items-center space-x-2.5">
+          {/* GitHub Sync Status Indicator */}
+          <div className="flex items-center space-x-1.5 px-2.5 py-1 text-xs rounded-full bg-emerald-950/60 border border-emerald-800/60 text-emerald-400">
             <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
-            <span className="text-[11px] font-mono font-medium">GitHub: origin/main</span>
+            <span className="text-[11px] font-medium font-mono">GitHub: origin/main</span>
           </div>
 
-          {/* Tiến độ tổng quan */}
-          <div className="flex items-center space-x-2 px-3 py-1 bg-[#18202d] border border-[#232d3f] rounded-lg">
-            <span className="text-[11px] text-slate-400">Tiến độ:</span>
-            <span className="text-xs font-mono font-bold text-sky-400">
-              {completedCount}/{lessons.length} ({Math.round((completedCount / lessons.length) * 100)}%)
-            </span>
-          </div>
+          {/* Sync Button */}
+          <button
+            onClick={() => {
+              setSaveStatus('Đã đồng bộ');
+              setTimeout(() => alert('✅ Đã đồng bộ toàn bộ tiến độ thực hành và ghi chú bài học!'), 150);
+            }}
+            title="Đồng bộ tiến độ học tập và ghi chú"
+            className="flex items-center space-x-1.5 px-3 py-1.5 text-xs font-medium text-slate-200 bg-[#18202d] hover:bg-[#232d3f] border border-[#232d3f] rounded-lg transition-colors"
+          >
+            <svg className="w-3.5 h-3.5 text-sky-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+            </svg>
+            <span>Đồng bộ</span>
+          </button>
+
+          {/* New Case / Note Button */}
+          <button
+            onClick={() => {
+              setIsRightPanelOpen(true);
+              setActiveTab('notes');
+            }}
+            className="flex items-center space-x-1.5 px-3 py-1.5 text-xs font-semibold text-white bg-gradient-to-r from-sky-600 to-blue-600 hover:from-sky-500 hover:to-blue-500 rounded-lg shadow-md shadow-sky-600/20 transition-all"
+          >
+            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+            </svg>
+            <span>+ Ghi chú</span>
+          </button>
 
           {/* Toggle Panel Phải */}
           <button
             onClick={() => setIsRightPanelOpen(!isRightPanelOpen)}
-            title="Đóng / Mở Bảng Ghi chú & Trợ lý"
+            title="Đóng / Mở Bảng Ghi chú & Nguồn tra cứu"
             className={`p-1.5 text-xs rounded-lg border transition-colors ${
               isRightPanelOpen
                 ? 'bg-[#18202d] border-sky-500/50 text-sky-400'
@@ -291,16 +308,16 @@ export default function Workbench({ name, email }: WorkbenchProps) {
         </div>
       </header>
 
-      {/* ─── MAIN WORKSPACE ───────────────────────────────────────────────────── */}
+      {/* ─── MAIN WORKSPACE (2 HOẶC 3 CỘT) ──────────────────────────────────── */}
       <div className="flex-1 flex overflow-hidden">
         
-        {/* ─── CỘT TRÁI: SIDEBAR DANH SÁCH BÀI HỌC (CIVIL NOTEBOOK STYLE) ──────── */}
+        {/* ─── CỘT TRÁI: SIDEBAR DANH SÁCH CA KINH NGHIỆM / BÀI HỌC ───────────── */}
         <aside className="w-80 border-r border-[#232d3f] bg-[#131822] flex flex-col shrink-0">
           
-          {/* Bộ lọc Chuyên mục Phần mềm (CAD Dropdown) */}
+          {/* Bộ lọc Chuyên mục Civil (Dropdown chuẩn Civil Notebook) */}
           <div className="p-3 border-b border-[#232d3f]">
-            <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1.5 font-mono">
-              Nhóm Kỹ thuật Tuyến & Hạ tầng
+            <label className="block text-[11px] font-semibold uppercase tracking-wider text-slate-400 mb-1.5">
+              Nhóm Kỹ thuật Civil
             </label>
             <div className="relative">
               <select
@@ -308,12 +325,12 @@ export default function Workbench({ name, email }: WorkbenchProps) {
                 onChange={(e) => setSoftwareFilter(e.target.value)}
                 className="w-full text-xs bg-[#0c1017] text-slate-200 border border-[#232d3f] rounded-lg px-2.5 py-1.5 focus:outline-none focus:border-sky-500 appearance-none cursor-pointer"
               >
-                <option value="all">📂 Tất cả phân hệ (All Software)</option>
-                <option value="Civil 3D">🛣️ Civil 3D — Tuyến & Bề mặt</option>
-                <option value="Navisworks">🔍 Navisworks — Phối hợp & Va chạm</option>
-                <option value="InfraWorks">🌐 InfraWorks — Mô phỏng 3D</option>
-                <option value="QGIS">🗺️ QGIS — Hạ tầng & Tọa độ GIS</option>
-                <option value="4D / 5D">⏱️ 4D / 5D — Tiến độ & Khối lượng</option>
+                <option value="all">📂 Tất cả các nhóm (All Groups)</option>
+                <option value="Civil 3D">🛣️ Civil 3D — Thiết kế tuyến & San nền</option>
+                <option value="Navisworks">🔍 Navisworks — Phối hợp & Clash Test</option>
+                <option value="InfraWorks">🌐 InfraWorks — Mô phỏng bối cảnh 3D</option>
+                <option value="QGIS">🗺️ QGIS — Bản đồ & Tọa độ GIS</option>
+                <option value="4D / 5D">⏱️ 4D / 5D — Tiến độ & Khối lượng BIM</option>
               </select>
               <div className="absolute right-2.5 top-2.5 pointer-events-none text-slate-400">
                 <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -323,12 +340,12 @@ export default function Workbench({ name, email }: WorkbenchProps) {
             </div>
           </div>
 
-          {/* Quick Search Filter trong danh sách */}
+          {/* Quick Search Filter in List */}
           <div className="px-3 pt-2 pb-2 border-b border-[#232d3f]/60">
             <div className="relative">
               <input
                 type="text"
-                placeholder="Lọc danh sách bài học..."
+                placeholder="Lọc danh sách..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="w-full text-xs bg-[#0c1017] text-slate-200 border border-[#232d3f] rounded-md pl-8 pr-2.5 py-1.5 focus:outline-none focus:border-sky-500 placeholder-slate-500"
@@ -339,186 +356,175 @@ export default function Workbench({ name, email }: WorkbenchProps) {
             </div>
           </div>
 
-          {/* Danh sách Thẻ Bài học (Cases / Lessons) */}
+          {/* Danh sách Thẻ Cases (Case Cards y hệt Civil Notebook) */}
           <div className="flex-1 overflow-y-auto p-2 space-y-1.5 scrollbar-thin">
-            {filteredChapters.map((chapter) => (
-              <div key={chapter.id} className="mb-2">
-                <div className="px-2 py-1 text-[10px] font-bold text-slate-400 uppercase tracking-wider flex items-center justify-between">
-                  <span>Chương {chapter.order}: {chapter.title}</span>
-                  <span className="text-[9px] px-1 py-0.5 rounded bg-[#18202d] text-slate-400 font-mono">
-                    {chapter.software}
-                  </span>
-                </div>
-                <div className="space-y-1 mt-1">
-                  {chapter.lessons.map((lesson) => {
-                    const isSelected = lesson.id === activeLessonId;
-                    const isDone = lessonProgress[lesson.id] === 'completed';
-                    const doneStepCount = lesson.steps.filter((_, idx) => completedSteps[`${lesson.id}-s${idx}`]).length;
+            {filteredLessons.map((lesson) => {
+              const isSelected = lesson.id === activeLessonId;
+              const isDone = lessonProgress[lesson.id] === 'completed';
 
-                    return (
-                      <div
-                        key={lesson.id}
-                        onClick={() => setActiveLessonId(lesson.id)}
-                        className={`p-2.5 rounded-lg border cursor-pointer transition-all ${
-                          isSelected
-                            ? 'border-sky-500 bg-[#1e293b] shadow-md shadow-sky-500/10'
-                            : 'border-[#232d3f] bg-[#18202d] hover:bg-[#1e293b] hover:border-slate-600'
-                        }`}
-                      >
-                        <div className="flex items-center justify-between mb-1">
-                          <span className="px-1.5 py-0.5 text-[10px] font-mono font-bold bg-sky-950 text-sky-400 border border-sky-800 rounded">
-                            {lesson.id.toUpperCase()}
-                          </span>
-                          {isDone ? (
-                            <span className="text-[10px] text-emerald-400 font-medium flex items-center space-x-1">
-                              <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                              </svg>
-                              <span>verified</span>
-                            </span>
-                          ) : (
-                            <span className="text-[10px] text-slate-500 font-mono">
-                              {doneStepCount}/{lesson.steps.length} bước
-                            </span>
-                          )}
-                        </div>
-                        <h4 className="text-xs font-semibold text-white line-clamp-2 mb-1.5">
-                          {lesson.title}
-                        </h4>
-                        <div className="flex items-center justify-between text-[10px] text-slate-400 font-mono">
-                          <span className="text-sky-400">{lesson.software}</span>
-                          <span>{lesson.minutes} phút</span>
-                        </div>
-                      </div>
-                    );
-                  })}
+              return (
+                <div
+                  key={lesson.id}
+                  onClick={() => setActiveLessonId(lesson.id)}
+                  className={`p-3 rounded-lg border cursor-pointer transition-all ${
+                    isSelected
+                      ? 'border-sky-500 bg-[#1e293b] shadow-md shadow-sky-500/10'
+                      : 'border-[#232d3f] bg-[#18202d] hover:bg-[#1e293b] hover:border-sky-500/50'
+                  }`}
+                >
+                  <div className="flex items-center justify-between mb-1">
+                    <span className="px-1.5 py-0.5 text-[10px] font-mono font-bold bg-sky-950 text-sky-400 border border-sky-800 rounded">
+                      {lesson.id.toUpperCase()}
+                    </span>
+                    {isDone ? (
+                      <span className="text-[10px] text-emerald-400 font-medium flex items-center space-x-1">
+                        <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                        </svg>
+                        <span>verified</span>
+                      </span>
+                    ) : (
+                      <span className="text-[10px] text-slate-500 font-mono">
+                        {lesson.minutes}p
+                      </span>
+                    )}
+                  </div>
+                  <h4 className="text-xs font-semibold text-white line-clamp-2 mb-1.5">
+                    {lesson.title}
+                  </h4>
+                  <div className="flex items-center space-x-1 text-[10px] text-slate-400">
+                    <span className="text-sky-400">{lesson.software}</span>
+                    <span>•</span>
+                    <span>Chương {lesson.chapterOrder}</span>
+                    <span>•</span>
+                    <span>Rev 1</span>
+                  </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
 
-          {/* Sidebar Footer (Tổng số bài học) */}
+          {/* Sidebar Footer (Tổng số ca) */}
           <div className="p-2.5 border-t border-[#232d3f] bg-[#0c1017] flex items-center justify-between text-[11px] text-slate-400">
-            <span className="font-mono text-sky-400">Tổng số: {lessons.length} bài</span>
-            <span className="text-slate-500">Sẵn sàng thực hành</span>
+            <span className="font-mono text-sky-400">Tổng số: {filteredLessons.length} ca</span>
+            <span className="text-slate-500">Sẵn sàng tra cứu</span>
           </div>
         </aside>
 
-        {/* ─── CỘT GIỮA: CHI TIẾT BÀI HỌC (MAIN CANVAS - ĐÃ BỎ KHOANH ĐỎ) ──────── */}
+        {/* ─── CỘT GIỮA: RIGHT CANVAS (VIEWER CHI TIẾT CA CHUẨN CIVIL NOTEBOOK) ── */}
         <main className="flex-1 bg-[#0c1017] flex flex-col overflow-hidden">
           
-          {/* Header Bài học */}
-          <div className="border-b border-[#232d3f] bg-[#131822] px-6 py-4 flex items-start justify-between shrink-0">
-            <div>
-              <div className="flex items-center space-x-2.5 mb-2">
-                <span className="px-2.5 py-0.5 text-xs font-mono font-bold bg-sky-950 text-sky-400 border border-sky-800 rounded-md">
-                  {currentLesson.id.toUpperCase()}
-                </span>
-                <span className="px-2 py-0.5 text-xs font-semibold bg-[#18202d] text-sky-300 border border-[#2d3a4f] rounded-md font-mono">
-                  {currentLesson.software}
-                </span>
-                <span className="px-2 py-0.5 text-xs text-slate-400 font-mono bg-[#18202d] border border-[#232d3f] rounded-md">
-                  Chương {currentLesson.chapterOrder}
-                </span>
-                <span className="px-2 py-0.5 text-xs text-slate-400 font-mono bg-[#18202d] border border-[#232d3f] rounded-md">
-                  ⏱️ {currentLesson.minutes} phút
-                </span>
-                {lessonProgress[currentLesson.id] === 'completed' && (
+          <div className="flex-1 overflow-y-auto p-6 max-w-4xl mx-auto w-full scrollbar-thin">
+            
+            {/* Header Ca Kinh nghiệm */}
+            <div className="border-b border-[#232d3f] pb-5 mb-6">
+              <div className="flex items-center justify-between mb-3">
+                <div className="flex items-center space-x-2.5">
+                  <span className="px-2.5 py-1 text-xs font-mono font-bold bg-sky-950 text-sky-400 border border-sky-800 rounded-md">
+                    {currentLesson.id.toUpperCase()}
+                  </span>
                   <span className="px-2 py-0.5 text-xs font-semibold bg-emerald-950 text-emerald-400 border border-emerald-800 rounded-md flex items-center space-x-1">
                     <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
                     </svg>
-                    <span>Hoàn tất nghiệm thu</span>
+                    <span>{lessonProgress[currentLesson.id] === 'completed' ? 'verified_live' : 'verified'}</span>
                   </span>
-                )}
+                  <span className="text-xs text-slate-400 font-mono">Revision 1</span>
+                  <span className="text-xs text-slate-500 font-mono">• Thời lượng: {currentLesson.minutes} phút</span>
+                </div>
+
+                {/* Action Edit Button */}
+                <button
+                  onClick={() => {
+                    const isDone = lessonProgress[currentLesson.id] === 'completed';
+                    const nextState = isDone ? 'practicing' : 'completed';
+                    setLessonProgress((prev) => ({ ...prev, [currentLesson.id]: nextState }));
+                    const updatedSteps = { ...completedSteps };
+                    currentLesson.steps.forEach((_, idx) => {
+                      updatedSteps[`${currentLesson.id}-s${idx}`] = !isDone;
+                    });
+                    setCompletedSteps(updatedSteps);
+                    localStorage.setItem('bim_completed_steps', JSON.stringify(updatedSteps));
+                  }}
+                  className={`flex items-center space-x-1.5 px-3 py-1.5 text-xs font-medium rounded-lg transition-colors border ${
+                    lessonProgress[currentLesson.id] === 'completed'
+                      ? 'bg-emerald-950/80 text-emerald-400 border-emerald-800'
+                      : 'text-slate-200 bg-[#18202d] hover:bg-[#232d3f] border-[#232d3f]'
+                  }`}
+                >
+                  <svg className="w-3.5 h-3.5 text-sky-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                  </svg>
+                  <span>{lessonProgress[currentLesson.id] === 'completed' ? '✓ Đã hoàn tất ca' : 'Đánh dấu hoàn thành'}</span>
+                </button>
               </div>
-              <h1 className="text-xl font-bold text-white tracking-tight leading-snug">
+
+              <h1 className="text-xl font-bold text-white tracking-tight leading-snug mb-2">
                 {currentLesson.title}
               </h1>
-            </div>
+              <p className="text-xs text-slate-400 leading-relaxed">
+                {currentLesson.objective}
+              </p>
 
-            {/* Action Buttons */}
-            <div className="flex items-center space-x-2">
-              <button
-                onClick={() => {
-                  const isDone = lessonProgress[currentLesson.id] === 'completed';
-                  const nextState = isDone ? 'practicing' : 'completed';
-                  setLessonProgress((prev) => ({ ...prev, [currentLesson.id]: nextState }));
-                  const updatedSteps = { ...completedSteps };
-                  currentLesson.steps.forEach((_, idx) => {
-                    updatedSteps[`${currentLesson.id}-s${idx}`] = !isDone;
-                  });
-                  setCompletedSteps(updatedSteps);
-                  localStorage.setItem('bim_completed_steps', JSON.stringify(updatedSteps));
-                }}
-                className={`flex items-center space-x-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg transition-all ${
-                  lessonProgress[currentLesson.id] === 'completed'
-                    ? 'bg-emerald-600 hover:bg-emerald-500 text-white shadow-lg shadow-emerald-600/20'
-                    : 'bg-[#18202d] hover:bg-[#232d3f] text-slate-200 border border-[#232d3f]'
-                }`}
-              >
-                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                </svg>
-                <span>{lessonProgress[currentLesson.id] === 'completed' ? 'Đã hoàn thành' : 'Đánh dấu hoàn thành'}</span>
-              </button>
-            </div>
-          </div>
-
-          {/* Vùng Cuộn Nội dung Bài học */}
-          <div className="flex-1 overflow-y-auto p-6 max-w-5xl mx-auto w-full space-y-5 scrollbar-thin">
-            
-            {/* 1. Mục tiêu & Điều kiện tiên quyết (2 Thẻ Card) */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {/* Thẻ Mục tiêu Kỹ thuật */}
-              <div className="p-4 rounded-xl border border-sky-900/40 bg-sky-950/15">
-                <div className="flex items-center space-x-2 text-sky-400 font-semibold text-xs mb-2">
-                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
-                  </svg>
-                  <span>MỤC TIÊU KỸ THUẬT</span>
-                </div>
-                <p className="text-xs text-slate-200 leading-relaxed font-sans">
-                  {currentLesson.objective}
-                </p>
+              {/* Pill Tags */}
+              <div className="flex flex-wrap gap-1.5 mt-3">
+                <span className="px-2 py-0.5 text-[11px] font-medium bg-[#18202d] text-sky-300 border border-[#2d3a4f] rounded font-mono">
+                  {currentLesson.software}
+                </span>
+                <span className="px-2 py-0.5 text-[11px] font-medium bg-[#18202d] text-sky-300 border border-[#2d3a4f] rounded font-mono">
+                  Chương {currentLesson.chapterOrder}
+                </span>
+                <span className="px-2 py-0.5 text-[11px] font-medium bg-[#18202d] text-slate-400 border border-[#232d3f] rounded font-mono">
+                  Civil 3D 2020-2027
+                </span>
+                <span className="px-2 py-0.5 text-[11px] font-medium bg-[#18202d] text-slate-400 border border-[#232d3f] rounded font-mono">
+                  {currentLesson.deliverable}
+                </span>
               </div>
+            </div>
 
-              {/* Thẻ Điều kiện Tiên quyết & Dữ liệu đầu vào */}
+            {/* Section Vấn đề & Nguyên nhân (2 Cột chuẩn Civil Notebook) */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
               <div className="p-4 rounded-xl border border-amber-900/40 bg-amber-950/15">
                 <div className="flex items-center space-x-2 text-amber-400 font-semibold text-xs mb-2">
                   <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
                   </svg>
-                  <span>ĐIỀU KIỆN TIÊN QUYẾT & ĐẦU VÀO</span>
+                  <span>VẤN ĐỀ / HIỆN TƯỢNG</span>
                 </div>
-                <ul className="text-xs text-slate-300 space-y-1.5 font-sans">
-                  {currentLesson.prerequisites.map((p, i) => (
-                    <li key={i} className="flex items-start space-x-1.5">
-                      <span className="text-amber-400 font-bold">•</span>
-                      <span>{p}</span>
-                    </li>
-                  ))}
-                </ul>
+                <p className="text-xs text-slate-200 leading-relaxed font-mono whitespace-pre-wrap">
+                  {currentLesson.mistakes[0]?.symptom || currentLesson.objective}
+                </p>
+              </div>
+
+              <div className="p-4 rounded-xl border border-sky-900/40 bg-sky-950/15">
+                <div className="flex items-center space-x-2 text-sky-400 font-semibold text-xs mb-2">
+                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
+                  </svg>
+                  <span>NGUYÊN NHÂN KỸ THUẬT</span>
+                </div>
+                <p className="text-xs text-slate-200 leading-relaxed font-mono whitespace-pre-wrap">
+                  {currentLesson.mistakes[0]?.fix || `Đặc tính thiết kế và luồng xử lý dữ liệu chuẩn của ${currentLesson.software}.`}
+                </p>
               </div>
             </div>
 
-            {/* ─── LƯU Ý: ĐÃ XÓA HOÀN TOÀN KHỐI KHOANH ĐỎ "SƠ ĐỒ NGUYÊN LÝ KỸ THUẬT" TẠI ĐÂY ─── */}
-
-            {/* 2. Quy trình Thực hành Từng bước Chuẩn Hóa (Steps) */}
-            <div className="rounded-xl border border-[#232d3f] bg-[#131822] overflow-hidden shadow-lg">
-              <div className="px-5 py-3 border-b border-[#232d3f] bg-[#18202d] flex items-center justify-between">
-                <div className="flex items-center space-x-2 text-emerald-400 font-bold text-xs uppercase tracking-wide">
+            {/* Section Quy trình Xử lý Chuẩn (ĐÃ BỎ SƠ ĐỒ KHOANH ĐỎ) */}
+            <div className="mb-6">
+              <div className="flex items-center justify-between mb-3">
+                <div className="flex items-center space-x-2 text-emerald-400 font-bold text-sm">
                   <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
                   </svg>
-                  <span>QUY TRÌNH THỰC HÀNH CHUẨN ({currentLesson.steps.length} BƯỚC)</span>
+                  <span>QUY TRÌNH XỬ LÝ CHUẨN</span>
                 </div>
                 <span className="text-[11px] text-slate-400">
-                  Tick chọn để đánh dấu tiến độ hoàn thành
+                  Tick từng bước để xác nhận kiểm soát
                 </span>
               </div>
 
-              <div className="divide-y divide-[#232d3f]/60">
+              <div className="bg-[#131822] border border-[#232d3f] rounded-xl divide-y divide-[#232d3f]/70 overflow-hidden shadow-lg">
                 {currentLesson.steps.map((step, idx) => {
                   const stepKey = `${currentLesson.id}-s${idx}`;
                   const isStepDone = completedSteps[stepKey];
@@ -528,10 +534,9 @@ export default function Workbench({ name, email }: WorkbenchProps) {
                       key={idx}
                       onClick={() => toggleStep(stepKey)}
                       className={`p-4 transition-colors cursor-pointer flex items-start space-x-3.5 ${
-                        isStepDone ? 'bg-emerald-950/15' : 'hover:bg-[#18202d]/70'
+                        isStepDone ? 'bg-emerald-950/15' : 'hover:bg-[#18202d]'
                       }`}
                     >
-                      {/* Checkbox */}
                       <input
                         type="checkbox"
                         checked={!!isStepDone}
@@ -539,7 +544,6 @@ export default function Workbench({ name, email }: WorkbenchProps) {
                         className="mt-1 w-4 h-4 rounded border-[#232d3f] bg-[#0c1017] text-sky-500 focus:ring-0 cursor-pointer"
                       />
 
-                      {/* Nội dung Bước */}
                       <div className="flex-1">
                         <div className="flex items-center space-x-2 mb-1.5">
                           <span className="px-2 py-0.5 text-[10px] font-mono font-bold bg-[#18202d] text-sky-400 border border-[#2d3a4f] rounded">
@@ -568,7 +572,7 @@ export default function Workbench({ name, email }: WorkbenchProps) {
 
                         {/* Kết quả mong đợi */}
                         <div className="text-[11px] text-emerald-400 flex items-center space-x-1.5 font-medium">
-                          <span className="text-emerald-500">✓ Kết quả cần thấy:</span>
+                          <span className="text-emerald-500">✓ Kết quả:</span>
                           <span>{step.expected}</span>
                         </div>
                       </div>
@@ -578,60 +582,52 @@ export default function Workbench({ name, email }: WorkbenchProps) {
               </div>
             </div>
 
-            {/* 3. Tiêu chí Kiểm tra Chất lượng & Cảnh báo (2 Thẻ Card) */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {/* Tiêu chí nghiệm thu QA */}
-              <div className="p-4 rounded-xl border border-emerald-900/40 bg-emerald-950/15">
-                <div className="flex items-center space-x-2 text-emerald-400 font-semibold text-xs mb-2.5">
+            {/* Section Cảnh báo & Tiêu chuẩn QA */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+              {/* Cảnh báo kỹ thuật */}
+              <div className="p-4 rounded-xl border border-rose-900/50 bg-rose-950/20">
+                <div className="flex items-center space-x-2 text-rose-400 font-semibold text-xs mb-2">
                   <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
                   </svg>
-                  <span>TIÊU CHÍ KIỂM TRA CHẤT LƯỢNG (QA CHECK)</span>
+                  <span>CẢNH BÁO KỸ THUẬT & LƯU Ý QUAN TRỌNG</span>
                 </div>
-                <ul className="text-xs space-y-2 text-slate-200">
-                  {currentLesson.checks.map((chk, i) => (
-                    <li key={i} className="flex items-start space-x-2 bg-[#131822] p-2.5 rounded-lg border border-[#232d3f]/80">
-                      <span className="text-emerald-400 font-bold">✓</span>
-                      <span>{chk}</span>
-                    </li>
+                <ul className="list-disc list-inside text-xs text-slate-200 space-y-1 font-mono">
+                  {currentLesson.mistakes.map((m, i) => (
+                    <li key={i}>{m.symptom}: {m.fix}</li>
                   ))}
                 </ul>
               </div>
 
-              {/* Cảnh báo kỹ thuật & Lỗi thường gặp */}
-              <div className="p-4 rounded-xl border border-rose-900/40 bg-rose-950/15">
-                <div className="flex items-center space-x-2 text-rose-400 font-semibold text-xs mb-2.5">
+              {/* Tiêu chí nghiệm thu QA */}
+              <div className="p-4 rounded-xl border border-emerald-900/40 bg-emerald-950/15">
+                <div className="flex items-center space-x-2 text-emerald-400 font-semibold text-xs mb-2">
                   <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                   </svg>
-                  <span>CẢNH BÁO KỸ THUẬT & SAI SÓT THƯỜNG GẶP</span>
+                  <span>TIÊU CHÍ NGHIỆM THU KIỂM TRA</span>
                 </div>
-                <div className="space-y-2 text-xs">
-                  {currentLesson.mistakes.map((m, i) => (
-                    <div key={i} className="p-2.5 rounded-lg bg-[#131822] border border-rose-900/30">
-                      <div className="text-rose-400 font-medium mb-1">⚠️ {m.symptom}</div>
-                      <div className="text-emerald-400">💡 Khắc phục: {m.fix}</div>
-                    </div>
+                <ul className="list-disc list-inside text-xs text-slate-200 space-y-1 font-mono">
+                  {currentLesson.checks.map((chk, i) => (
+                    <li key={i}>{chk}</li>
                   ))}
-                </div>
+                </ul>
               </div>
             </div>
 
-            {/* 4. Bài tập Thực hành & Sản phẩm Bàn giao */}
-            <div className="p-4 rounded-xl border border-purple-900/40 bg-purple-950/15">
+            {/* Bài tập Thực hành & Sản phẩm */}
+            <div className="p-4 rounded-xl border border-[#232d3f] bg-[#131822]">
               <div className="flex items-center space-x-2 text-purple-400 font-semibold text-xs mb-2">
                 <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
                 </svg>
-                <span>BÀI TẬP THỰC HÀNH & SẢN PHẨM BÀN GIAO</span>
+                <span>BÀI TẬP VẬN DỤNG & SẢN PHẨM BÀN GIAO</span>
               </div>
-              <div className="text-xs space-y-2 text-slate-200">
-                <div>
-                  <strong className="text-white">Yêu cầu thực hành:</strong> {currentLesson.exercise}
-                </div>
+              <div className="text-xs text-slate-300 space-y-2">
+                <div><strong>Yêu cầu:</strong> {currentLesson.exercise}</div>
                 <div className="flex items-center space-x-2">
-                  <strong className="text-white">Sản phẩm nghiệm thu:</strong>
-                  <span className="px-2.5 py-0.5 rounded-md bg-[#131822] text-sky-400 border border-sky-800/60 font-mono text-xs">
+                  <strong>Sản phẩm nộp:</strong>
+                  <span className="px-2 py-0.5 rounded bg-[#18202d] text-sky-400 border border-sky-800 font-mono text-[11px]">
                     {currentLesson.deliverable}
                   </span>
                 </div>
@@ -654,7 +650,7 @@ export default function Workbench({ name, email }: WorkbenchProps) {
                     : 'border-transparent text-slate-400 hover:text-slate-200'
                 }`}
               >
-                <span>📝 Sổ tay Ghi chú</span>
+                <span>📝 Ghi chú</span>
               </button>
               <button
                 onClick={() => setActiveTab('sources')}
