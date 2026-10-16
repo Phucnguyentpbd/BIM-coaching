@@ -201,3 +201,24 @@ body {
   stroke-width: 2.5;
   fill: none;
 }
+
+/* Civil Notebook CAD Scrollbars */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: #232d3f;
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #38bdf8;
+}
+
+/* CAD Glow effect */
+.cad-glow {
+  box-shadow: 0 0 15px rgba(56, 189, 248, 0.15);
+}

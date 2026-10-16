@@ -1,9 +1,8 @@
 'use client';
 
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { chapters, lessons, sources } from '../content';
 import type { Lesson, Chapter, Source } from '../content/types';
-import InstructionDiagram from './components/instruction-diagram';
 
 interface WorkbenchProps {
   name: string | null;
@@ -15,12 +14,19 @@ export default function Workbench({ name, email }: WorkbenchProps) {
   const [activeTab, setActiveTab] = useState<'notes' | 'sources' | 'ai'>('notes');
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [softwareFilter, setSoftwareFilter] = useState<string>('all');
+  const [isRightPanelOpen, setIsRightPanelOpen] = useState<boolean>(true);
   
+  // Trạng thái tìm kiếm nhanh Modal (Ctrl + K)
+  const [isSearchModalOpen, setIsSearchModalOpen] = useState<boolean>(false);
+  const [modalSearchQuery, setModalSearchQuery] = useState<string>('');
+  const searchInputRef = useRef<HTMLInputElement>(null);
+
   // Trạng thái ghi chú
   const [notes, setNotes] = useState<Record<string, string>>({});
   const [currentNote, setCurrentNote] = useState<string>('');
   const [isSavingNote, setIsSavingNote] = useState<boolean>(false);
   const [saveStatus, setSaveStatus] = useState<string>('Đã đồng bộ');
+  const [copiedText, setCopiedText] = useState<string | null>(null);
 
   // Trạng thái tiến độ thực hành
   const [completedSteps, setCompletedSteps] = useState<Record<string, boolean>>({});
@@ -31,8 +37,8 @@ export default function Workbench({ name, email }: WorkbenchProps) {
   const [aiChat, setAiChat] = useState<Array<{ role: 'user' | 'assistant'; text: string; sources?: string[] }>>([
     {
       role: 'assistant',
-      text: 'Xin chào kỹ sư! Tôi là trợ lý AI BIM Tuyến 2027. Tôi sẵn sàng hỗ trợ giải đáp kỹ thuật Civil 3D, Navisworks, InfraWorks, QGIS và 4D/5D có dẫn nguồn trực tiếp từ giáo trình và tài liệu tiêu chuẩn.',
-      sources: ['Giáo trình thực hành BIM Tuyến 2027', 'Autodesk Official Help 2027']
+      text: 'Xin chào kỹ sư! Tôi là trợ lý AI BIM Tuyến 2027. Tôi hỗ trợ giải đáp kỹ thuật Civil 3D, Navisworks, InfraWorks, QGIS và 4D/5D có dẫn nguồn trực tiếp từ giáo trình thực hành và tài liệu Google Drive.',
+      sources: ['Giáo trình thực hành BIM Tuyến 2027', 'Autodesk Official Help 2027', 'G:\\My Drive\\my\\Hoctap']
     }
   ]);
   const [isAiLoading, setIsAiLoading] = useState<boolean>(false);
@@ -56,6 +62,32 @@ export default function Workbench({ name, email }: WorkbenchProps) {
     }
   }, []);
 
+  // Keyboard shortcut Ctrl + K
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
+        e.preventDefault();
+        setIsSearchModalOpen((prev) => !prev);
+      }
+      if (e.key === 'Escape') {
+        setIsSearchModalOpen(false);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
+
+  // Tự động focus input khi mở modal tìm kiếm
+  useEffect(() => {
+    if (isSearchModalOpen) {
+      setTimeout(() => {
+        searchInputRef.current?.focus();
+      }, 50);
+    } else {
+      setModalSearchQuery('');
+    }
+  }, [isSearchModalOpen]);
+
   // Cập nhật currentNote khi đổi bài
   useEffect(() => {
     setCurrentNote(notes[activeLessonId] || '');
@@ -67,7 +99,7 @@ export default function Workbench({ name, email }: WorkbenchProps) {
     return lessons.find((l) => l.id === activeLessonId) || lessons[0];
   }, [activeLessonId]);
 
-  // Lọc bài học theo tìm kiếm và phần mềm
+  // Lọc bài học theo tìm kiếm và phần mềm ở sidebar
   const filteredChapters = useMemo(() => {
     const q = searchQuery.toLowerCase().trim();
     return chapters
@@ -76,6 +108,7 @@ export default function Workbench({ name, email }: WorkbenchProps) {
         const matchingLessons = ch.lessons.filter((l) => {
           if (!q) return true;
           return (
+            l.id.toLowerCase().includes(q) ||
             l.title.toLowerCase().includes(q) ||
             l.objective.toLowerCase().includes(q) ||
             l.exercise.toLowerCase().includes(q) ||
@@ -87,6 +120,22 @@ export default function Workbench({ name, email }: WorkbenchProps) {
       })
       .filter(Boolean) as Chapter[];
   }, [searchQuery, softwareFilter]);
+
+  // Tìm kiếm toàn cục cho Modal Ctrl + K
+  const modalSearchResults = useMemo(() => {
+    const q = modalSearchQuery.toLowerCase().trim();
+    if (!q) return [];
+    return lessons.filter((l) => {
+      return (
+        l.id.toLowerCase().includes(q) ||
+        l.title.toLowerCase().includes(q) ||
+        l.software.toLowerCase().includes(q) ||
+        l.objective.toLowerCase().includes(q) ||
+        l.steps.some((s) => s.title.toLowerCase().includes(q) || s.action.toLowerCase().includes(q)) ||
+        l.mistakes.some((m) => m.symptom.toLowerCase().includes(q) || m.fix.toLowerCase().includes(q))
+      );
+    }).slice(0, 15);
+  }, [modalSearchQuery]);
 
   // Lưu ghi chú
   const handleSaveNote = () => {
@@ -103,7 +152,7 @@ export default function Workbench({ name, email }: WorkbenchProps) {
     setTimeout(() => {
       setIsSavingNote(false);
       setSaveStatus('Đã đồng bộ');
-    }, 400);
+    }, 300);
   };
 
   // Đánh dấu hoàn thành bước thực hành
@@ -112,7 +161,6 @@ export default function Workbench({ name, email }: WorkbenchProps) {
     setCompletedSteps(updated);
     localStorage.setItem('bim_completed_steps', JSON.stringify(updated));
 
-    // Tự động kiểm tra xem tất cả các bước của bài này đã xong chưa
     if (currentLesson) {
       const allDone = currentLesson.steps.every((_, idx) => updated[`${currentLesson.id}-s${idx}`]);
       const newProgress = {
@@ -129,6 +177,13 @@ export default function Workbench({ name, email }: WorkbenchProps) {
     return Object.values(lessonProgress).filter((s) => s === 'completed').length;
   }, [lessonProgress]);
 
+  // Sao chép lệnh CAD / text
+  const copyToClipboard = (text: string, label: string) => {
+    navigator.clipboard.writeText(text);
+    setCopiedText(label);
+    setTimeout(() => setCopiedText(null), 2000);
+  };
+
   // Xử lý gửi câu hỏi AI
   const handleSendAi = async () => {
     if (!aiPrompt.trim() || isAiLoading) return;
@@ -137,14 +192,13 @@ export default function Workbench({ name, email }: WorkbenchProps) {
     setAiChat((prev) => [...prev, { role: 'user', text: userMsg }]);
     setIsAiLoading(true);
 
-    // Giả lập trả lời chuyên gia có dẫn nguồn từ giáo trình
     setTimeout(() => {
       let reply = '';
       let replySources = [currentLesson.title, 'Giáo trình BIM Tuyến 2027'];
 
       const lower = userMsg.toLowerCase();
       if (lower.includes('infraworks') || lower.includes('chìm') || lower.includes('nổi')) {
-        reply = 'Trong Autodesk InfraWorks, hiện tượng corridor bị chìm dưới địa hình thường do cao độ Surface bối cảnh xung quanh cao hơn mặt hoàn thiện hoặc chưa thiết lập đè địa hình (Coverages/Terrain Overlay). Bạn cần kiểm tra thứ tự bề mặt trong Surface Layers, đưa Terrain Surface của Corridor lên trên và thiết lập Component Mapping chính xác.';
+        reply = 'Trong Autodesk InfraWorks, hiện tượng corridor bị chìm dưới địa hình thường do Surface bối cảnh xung quanh cao hơn mặt hoàn thiện hoặc chưa thiết lập đè địa hình (Coverages/Terrain Overlay). Bạn cần kiểm tra thứ tự bề mặt trong Surface Layers, đưa Terrain Surface của Corridor lên trên và thiết lập Component Mapping chính xác.';
         replySources.push('Chương 15: Đưa tuyến và cấu kiện vào InfraWorks', 'Autodesk Help: Corridor Component Mapping');
       } else if (lower.includes('tọa độ') || lower.includes('vn-2000') || lower.includes('qgis')) {
         reply = 'Khi kiểm tra hệ tọa độ trong QGIS với dữ liệu Civil 3D sang: Tuyệt đối không nhầm lẫn giữa việc "Gán hệ tọa độ (Set CRS)" và "Chuyển hệ tọa độ (Reproject CRS)". Luôn đối chiếu ít nhất 3 điểm khống chế tọa độ (E, N, Z) giữa bản vẽ DWG và lớp vector GeoPackage, không chỉ nhìn ảnh vệ tinh vì ảnh vệ tinh Google có độ lệch cục bộ 1-3m.';
@@ -153,493 +207,698 @@ export default function Workbench({ name, email }: WorkbenchProps) {
         reply = 'Để Property Sets hiển thị đầy đủ trong Navisworks: Trong Civil 3D, hãy gán Property Set Definition vào Corridor Solids hoặc 3D Solid objects. Khi mở bằng Navisworks hoặc xuất NWC/IFC 4.3, kích hoạt tùy chọn "Convert Property Sets" trong Navisworks DWG/DXF Loader Options.';
         replySources.push('Chương 7: Quản trị Property Sets', 'Chương 8: Xuất NWC/DWG/IFC 4.3');
       } else {
-        reply = `Về vấn đề "${userMsg}": Theo quy trình bài học ${currentLesson.id} (${currentLesson.title}), bạn cần thực hiện tuần tự theo bảng checklist các bước thao tác, chú ý phần "Cách kiểm tra" và các "Lỗi thường gặp" để đảm bảo tính toàn vẹn của mô hình BIM và tọa độ mốc.`;
+        reply = `Về vấn đề "${userMsg}": Theo quy trình bài học ${currentLesson.id.toUpperCase()} (${currentLesson.title}), bạn cần thực hiện tuần tự theo bảng checklist các bước thao tác, chú ý phần "Tiêu chí kiểm tra chất lượng" và các "Lỗi thường gặp" để đảm bảo tính toàn vẹn của mô hình BIM và tọa độ mốc.`;
       }
 
       setAiChat((prev) => [...prev, { role: 'assistant', text: reply, sources: replySources }]);
       setIsAiLoading(false);
-    }, 700);
+    }, 600);
   };
 
   return (
-    <div className="flex h-screen w-screen overflow-hidden bg-[#0d1117] text-[#c9d1d9] font-sans antialiased selection:bg-[#238636] selection:text-white">
-      {/* CỘT TRÁI: DANH SÁCH 24 CHƯƠNG & TÌM KIẾM */}
-      <aside className="w-80 flex-shrink-0 flex flex-col border-r border-[#30363d] bg-[#161b22]">
-        {/* Header App */}
-        <div className="p-4 border-b border-[#30363d]">
-          <div className="flex items-center justify-between mb-2">
-            <span className="font-bold text-sm tracking-wide text-[#58a6ff] uppercase flex items-center gap-1.5">
-              <span className="w-2.5 h-2.5 rounded-full bg-[#238636] inline-block animate-pulse"></span>
-              BIM Tuyến 2027
-            </span>
-            <span className="text-xs px-2 py-0.5 rounded bg-[#21262d] text-[#8b949e] border border-[#30363d]">
-              v2.4
-            </span>
+    <div className="flex flex-col h-screen w-screen overflow-hidden bg-[#0c1017] text-slate-200 font-sans antialiased select-none">
+      
+      {/* ─── TOPBAR HEADER (PHONG CÁCH CIVIL NOTEBOOK) ────────────────────────── */}
+      <header className="h-14 border-b border-[#232d3f] bg-[#131822] px-4 flex items-center justify-between shrink-0 z-20">
+        {/* Brand / Logo */}
+        <div className="flex items-center space-x-3">
+          <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-sky-500 to-blue-600 flex items-center justify-center shadow-lg shadow-sky-500/20 text-white font-bold text-base">
+            <svg className="w-5 h-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
+            </svg>
           </div>
-          <h1 className="text-xs text-[#8b949e] font-medium leading-relaxed">
-            Sổ tay kỹ thuật thực hành Civil 3D, Navisworks, InfraWorks & QGIS
-          </h1>
-
-          {/* Thanh tiến độ */}
-          <div className="mt-3 bg-[#0d1117] rounded-md p-2 border border-[#30363d]">
-            <div className="flex justify-between text-xs mb-1">
-              <span className="text-[#8b949e]">Tiến độ học tập</span>
-              <span className="text-[#58a6ff] font-semibold">
-                {completedCount} / {lessons.length} bài ({Math.round((completedCount / lessons.length) * 100)}%)
+          <div>
+            <div className="flex items-center space-x-2">
+              <span className="font-bold text-white tracking-wide text-sm font-mono">BIM NOTEBOOK</span>
+              <span className="px-1.5 py-0.5 text-[10px] uppercase font-semibold bg-sky-950 text-sky-400 border border-sky-800 rounded font-mono">
+                v2.4 Pro
               </span>
             </div>
-            <div className="w-full bg-[#21262d] h-1.5 rounded-full overflow-hidden">
-              <div
-                className="bg-[#238636] h-full transition-all duration-300"
-                style={{ width: `${(completedCount / lessons.length) * 100}%` }}
-              ></div>
+            <div className="text-[11px] text-slate-400">
+              Sổ tay Kỹ thuật Thực hành BIM Tuyến & Hạ tầng GIS
             </div>
-          </div>
-
-          {/* Tìm kiếm */}
-          <div className="mt-3">
-            <input
-              type="text"
-              placeholder="Tìm bài học, lỗi, thao tác..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full px-3 py-1.5 text-xs bg-[#0d1117] border border-[#30363d] rounded-md text-[#c9d1d9] placeholder-[#484f58] focus:outline-none focus:border-[#58a6ff]"
-            />
-          </div>
-
-          {/* Lọc theo phần mềm */}
-          <div className="flex gap-1 mt-2 overflow-x-auto pb-1 text-[11px] scrollbar-none">
-            {['all', 'Civil 3D', 'Navisworks', 'InfraWorks', 'QGIS', '4D / 5D'].map((sw) => (
-              <button
-                key={sw}
-                onClick={() => setSoftwareFilter(sw)}
-                className={`px-2 py-0.5 rounded-full whitespace-nowrap transition-colors ${
-                  softwareFilter === sw
-                    ? 'bg-[#388bfd] text-white font-medium'
-                    : 'bg-[#21262d] text-[#8b949e] hover:text-[#c9d1d9]'
-                }`}
-              >
-                {sw === 'all' ? 'Tất cả' : sw}
-              </button>
-            ))}
           </div>
         </div>
 
-        {/* Danh sách chương & bài */}
-        <div className="flex-1 overflow-y-auto p-2 space-y-3 scrollbar-thin">
-          {filteredChapters.map((chapter) => (
-            <div key={chapter.id} className="rounded-md border border-[#30363d]/50 bg-[#0d1117]/60 overflow-hidden">
-              <div className="px-3 py-2 bg-[#21262d]/60 border-b border-[#30363d]/40 flex items-center justify-between">
-                <span className="text-xs font-semibold text-[#f0f6fc]">
-                  Chương {chapter.order}: {chapter.title}
+        {/* Center: Command Switcher Quick Search (Ctrl+K) */}
+        <div className="flex-1 max-w-md mx-6">
+          <button
+            onClick={() => setIsSearchModalOpen(true)}
+            className="w-full flex items-center justify-between px-3.5 py-1.5 text-xs text-slate-400 bg-[#0c1017] hover:bg-[#18202d] border border-[#232d3f] rounded-lg transition-all shadow-inner group"
+          >
+            <div className="flex items-center space-x-2">
+              <svg className="w-4 h-4 text-slate-500 group-hover:text-sky-400 transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+              </svg>
+              <span>Tìm nhanh theo lệnh CAD, bài học, lỗi kỹ thuật...</span>
+            </div>
+            <kbd className="px-1.5 py-0.5 text-[10px] bg-[#1a2332] text-slate-300 border border-[#2d3a4f] rounded font-mono">
+              Ctrl + K
+            </kbd>
+          </button>
+        </div>
+
+        {/* Right Status & Controls */}
+        <div className="flex items-center space-x-3">
+          {/* GitHub Sync Status */}
+          <div className="hidden sm:flex items-center space-x-1.5 px-2.5 py-1 text-xs rounded-full bg-emerald-950/60 border border-emerald-800/60 text-emerald-400">
+            <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+            <span className="text-[11px] font-mono font-medium">GitHub: origin/main</span>
+          </div>
+
+          {/* Tiến độ tổng quan */}
+          <div className="flex items-center space-x-2 px-3 py-1 bg-[#18202d] border border-[#232d3f] rounded-lg">
+            <span className="text-[11px] text-slate-400">Tiến độ:</span>
+            <span className="text-xs font-mono font-bold text-sky-400">
+              {completedCount}/{lessons.length} ({Math.round((completedCount / lessons.length) * 100)}%)
+            </span>
+          </div>
+
+          {/* Toggle Panel Phải */}
+          <button
+            onClick={() => setIsRightPanelOpen(!isRightPanelOpen)}
+            title="Đóng / Mở Bảng Ghi chú & Trợ lý"
+            className={`p-1.5 text-xs rounded-lg border transition-colors ${
+              isRightPanelOpen
+                ? 'bg-[#18202d] border-sky-500/50 text-sky-400'
+                : 'bg-[#18202d] border-[#232d3f] text-slate-400 hover:text-white'
+            }`}
+          >
+            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16m-7 6h7" />
+            </svg>
+          </button>
+        </div>
+      </header>
+
+      {/* ─── MAIN WORKSPACE ───────────────────────────────────────────────────── */}
+      <div className="flex-1 flex overflow-hidden">
+        
+        {/* ─── CỘT TRÁI: SIDEBAR DANH SÁCH BÀI HỌC (CIVIL NOTEBOOK STYLE) ──────── */}
+        <aside className="w-80 border-r border-[#232d3f] bg-[#131822] flex flex-col shrink-0">
+          
+          {/* Bộ lọc Chuyên mục Phần mềm (CAD Dropdown) */}
+          <div className="p-3 border-b border-[#232d3f]">
+            <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1.5 font-mono">
+              Nhóm Kỹ thuật Tuyến & Hạ tầng
+            </label>
+            <div className="relative">
+              <select
+                value={softwareFilter}
+                onChange={(e) => setSoftwareFilter(e.target.value)}
+                className="w-full text-xs bg-[#0c1017] text-slate-200 border border-[#232d3f] rounded-lg px-2.5 py-1.5 focus:outline-none focus:border-sky-500 appearance-none cursor-pointer"
+              >
+                <option value="all">📂 Tất cả phân hệ (All Software)</option>
+                <option value="Civil 3D">🛣️ Civil 3D — Tuyến & Bề mặt</option>
+                <option value="Navisworks">🔍 Navisworks — Phối hợp & Va chạm</option>
+                <option value="InfraWorks">🌐 InfraWorks — Mô phỏng 3D</option>
+                <option value="QGIS">🗺️ QGIS — Hạ tầng & Tọa độ GIS</option>
+                <option value="4D / 5D">⏱️ 4D / 5D — Tiến độ & Khối lượng</option>
+              </select>
+              <div className="absolute right-2.5 top-2.5 pointer-events-none text-slate-400">
+                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                </svg>
+              </div>
+            </div>
+          </div>
+
+          {/* Quick Search Filter trong danh sách */}
+          <div className="px-3 pt-2 pb-2 border-b border-[#232d3f]/60">
+            <div className="relative">
+              <input
+                type="text"
+                placeholder="Lọc danh sách bài học..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full text-xs bg-[#0c1017] text-slate-200 border border-[#232d3f] rounded-md pl-8 pr-2.5 py-1.5 focus:outline-none focus:border-sky-500 placeholder-slate-500"
+              />
+              <svg className="w-3.5 h-3.5 text-slate-500 absolute left-2.5 top-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
+              </svg>
+            </div>
+          </div>
+
+          {/* Danh sách Thẻ Bài học (Cases / Lessons) */}
+          <div className="flex-1 overflow-y-auto p-2 space-y-1.5 scrollbar-thin">
+            {filteredChapters.map((chapter) => (
+              <div key={chapter.id} className="mb-2">
+                <div className="px-2 py-1 text-[10px] font-bold text-slate-400 uppercase tracking-wider flex items-center justify-between">
+                  <span>Chương {chapter.order}: {chapter.title}</span>
+                  <span className="text-[9px] px-1 py-0.5 rounded bg-[#18202d] text-slate-400 font-mono">
+                    {chapter.software}
+                  </span>
+                </div>
+                <div className="space-y-1 mt-1">
+                  {chapter.lessons.map((lesson) => {
+                    const isSelected = lesson.id === activeLessonId;
+                    const isDone = lessonProgress[lesson.id] === 'completed';
+                    const doneStepCount = lesson.steps.filter((_, idx) => completedSteps[`${lesson.id}-s${idx}`]).length;
+
+                    return (
+                      <div
+                        key={lesson.id}
+                        onClick={() => setActiveLessonId(lesson.id)}
+                        className={`p-2.5 rounded-lg border cursor-pointer transition-all ${
+                          isSelected
+                            ? 'border-sky-500 bg-[#1e293b] shadow-md shadow-sky-500/10'
+                            : 'border-[#232d3f] bg-[#18202d] hover:bg-[#1e293b] hover:border-slate-600'
+                        }`}
+                      >
+                        <div className="flex items-center justify-between mb-1">
+                          <span className="px-1.5 py-0.5 text-[10px] font-mono font-bold bg-sky-950 text-sky-400 border border-sky-800 rounded">
+                            {lesson.id.toUpperCase()}
+                          </span>
+                          {isDone ? (
+                            <span className="text-[10px] text-emerald-400 font-medium flex items-center space-x-1">
+                              <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                              </svg>
+                              <span>verified</span>
+                            </span>
+                          ) : (
+                            <span className="text-[10px] text-slate-500 font-mono">
+                              {doneStepCount}/{lesson.steps.length} bước
+                            </span>
+                          )}
+                        </div>
+                        <h4 className="text-xs font-semibold text-white line-clamp-2 mb-1.5">
+                          {lesson.title}
+                        </h4>
+                        <div className="flex items-center justify-between text-[10px] text-slate-400 font-mono">
+                          <span className="text-sky-400">{lesson.software}</span>
+                          <span>{lesson.minutes} phút</span>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* Sidebar Footer (Tổng số bài học) */}
+          <div className="p-2.5 border-t border-[#232d3f] bg-[#0c1017] flex items-center justify-between text-[11px] text-slate-400">
+            <span className="font-mono text-sky-400">Tổng số: {lessons.length} bài</span>
+            <span className="text-slate-500">Sẵn sàng thực hành</span>
+          </div>
+        </aside>
+
+        {/* ─── CỘT GIỮA: CHI TIẾT BÀI HỌC (MAIN CANVAS - ĐÃ BỎ KHOANH ĐỎ) ──────── */}
+        <main className="flex-1 bg-[#0c1017] flex flex-col overflow-hidden">
+          
+          {/* Header Bài học */}
+          <div className="border-b border-[#232d3f] bg-[#131822] px-6 py-4 flex items-start justify-between shrink-0">
+            <div>
+              <div className="flex items-center space-x-2.5 mb-2">
+                <span className="px-2.5 py-0.5 text-xs font-mono font-bold bg-sky-950 text-sky-400 border border-sky-800 rounded-md">
+                  {currentLesson.id.toUpperCase()}
                 </span>
-                <span className="text-[10px] px-1.5 py-0.5 rounded bg-[#161b22] text-[#8b949e] border border-[#30363d]">
-                  {chapter.software}
+                <span className="px-2 py-0.5 text-xs font-semibold bg-[#18202d] text-sky-300 border border-[#2d3a4f] rounded-md font-mono">
+                  {currentLesson.software}
+                </span>
+                <span className="px-2 py-0.5 text-xs text-slate-400 font-mono bg-[#18202d] border border-[#232d3f] rounded-md">
+                  Chương {currentLesson.chapterOrder}
+                </span>
+                <span className="px-2 py-0.5 text-xs text-slate-400 font-mono bg-[#18202d] border border-[#232d3f] rounded-md">
+                  ⏱️ {currentLesson.minutes} phút
+                </span>
+                {lessonProgress[currentLesson.id] === 'completed' && (
+                  <span className="px-2 py-0.5 text-xs font-semibold bg-emerald-950 text-emerald-400 border border-emerald-800 rounded-md flex items-center space-x-1">
+                    <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    <span>Hoàn tất nghiệm thu</span>
+                  </span>
+                )}
+              </div>
+              <h1 className="text-xl font-bold text-white tracking-tight leading-snug">
+                {currentLesson.title}
+              </h1>
+            </div>
+
+            {/* Action Buttons */}
+            <div className="flex items-center space-x-2">
+              <button
+                onClick={() => {
+                  const isDone = lessonProgress[currentLesson.id] === 'completed';
+                  const nextState = isDone ? 'practicing' : 'completed';
+                  setLessonProgress((prev) => ({ ...prev, [currentLesson.id]: nextState }));
+                  const updatedSteps = { ...completedSteps };
+                  currentLesson.steps.forEach((_, idx) => {
+                    updatedSteps[`${currentLesson.id}-s${idx}`] = !isDone;
+                  });
+                  setCompletedSteps(updatedSteps);
+                  localStorage.setItem('bim_completed_steps', JSON.stringify(updatedSteps));
+                }}
+                className={`flex items-center space-x-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg transition-all ${
+                  lessonProgress[currentLesson.id] === 'completed'
+                    ? 'bg-emerald-600 hover:bg-emerald-500 text-white shadow-lg shadow-emerald-600/20'
+                    : 'bg-[#18202d] hover:bg-[#232d3f] text-slate-200 border border-[#232d3f]'
+                }`}
+              >
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                </svg>
+                <span>{lessonProgress[currentLesson.id] === 'completed' ? 'Đã hoàn thành' : 'Đánh dấu hoàn thành'}</span>
+              </button>
+            </div>
+          </div>
+
+          {/* Vùng Cuộn Nội dung Bài học */}
+          <div className="flex-1 overflow-y-auto p-6 max-w-5xl mx-auto w-full space-y-5 scrollbar-thin">
+            
+            {/* 1. Mục tiêu & Điều kiện tiên quyết (2 Thẻ Card) */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {/* Thẻ Mục tiêu Kỹ thuật */}
+              <div className="p-4 rounded-xl border border-sky-900/40 bg-sky-950/15">
+                <div className="flex items-center space-x-2 text-sky-400 font-semibold text-xs mb-2">
+                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                  </svg>
+                  <span>MỤC TIÊU KỸ THUẬT</span>
+                </div>
+                <p className="text-xs text-slate-200 leading-relaxed font-sans">
+                  {currentLesson.objective}
+                </p>
+              </div>
+
+              {/* Thẻ Điều kiện Tiên quyết & Dữ liệu đầu vào */}
+              <div className="p-4 rounded-xl border border-amber-900/40 bg-amber-950/15">
+                <div className="flex items-center space-x-2 text-amber-400 font-semibold text-xs mb-2">
+                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                  </svg>
+                  <span>ĐIỀU KIỆN TIÊN QUYẾT & ĐẦU VÀO</span>
+                </div>
+                <ul className="text-xs text-slate-300 space-y-1.5 font-sans">
+                  {currentLesson.prerequisites.map((p, i) => (
+                    <li key={i} className="flex items-start space-x-1.5">
+                      <span className="text-amber-400 font-bold">•</span>
+                      <span>{p}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            </div>
+
+            {/* ─── LƯU Ý: ĐÃ XÓA HOÀN TOÀN KHỐI KHOANH ĐỎ "SƠ ĐỒ NGUYÊN LÝ KỸ THUẬT" TẠI ĐÂY ─── */}
+
+            {/* 2. Quy trình Thực hành Từng bước Chuẩn Hóa (Steps) */}
+            <div className="rounded-xl border border-[#232d3f] bg-[#131822] overflow-hidden shadow-lg">
+              <div className="px-5 py-3 border-b border-[#232d3f] bg-[#18202d] flex items-center justify-between">
+                <div className="flex items-center space-x-2 text-emerald-400 font-bold text-xs uppercase tracking-wide">
+                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
+                  </svg>
+                  <span>QUY TRÌNH THỰC HÀNH CHUẨN ({currentLesson.steps.length} BƯỚC)</span>
+                </div>
+                <span className="text-[11px] text-slate-400">
+                  Tick chọn để đánh dấu tiến độ hoàn thành
                 </span>
               </div>
-              <div className="p-1 space-y-0.5">
-                {chapter.lessons.map((lesson) => {
-                  const isActive = lesson.id === activeLessonId;
-                  const isDone = lessonProgress[lesson.id] === 'completed';
+
+              <div className="divide-y divide-[#232d3f]/60">
+                {currentLesson.steps.map((step, idx) => {
+                  const stepKey = `${currentLesson.id}-s${idx}`;
+                  const isStepDone = completedSteps[stepKey];
+
                   return (
-                    <button
-                      key={lesson.id}
-                      onClick={() => setActiveLessonId(lesson.id)}
-                      className={`w-full text-left px-2.5 py-2 rounded text-xs transition-colors flex items-start gap-2 ${
-                        isActive
-                          ? 'bg-[#1f6feb]/20 text-[#58a6ff] border border-[#1f6feb]/50 font-medium'
-                          : 'text-[#8b949e] hover:bg-[#21262d] hover:text-[#c9d1d9]'
+                    <div
+                      key={idx}
+                      onClick={() => toggleStep(stepKey)}
+                      className={`p-4 transition-colors cursor-pointer flex items-start space-x-3.5 ${
+                        isStepDone ? 'bg-emerald-950/15' : 'hover:bg-[#18202d]/70'
                       }`}
                     >
-                      <span className="mt-0.5">
-                        {isDone ? (
-                          <span className="text-[#238636]">✓</span>
-                        ) : (
-                          <span className="text-[#484f58]">•</span>
-                        )}
-                      </span>
-                      <div className="flex-1 line-clamp-2">
-                        <span className="text-[#c9d1d9] font-medium mr-1.5">{lesson.id.toUpperCase()}:</span>
-                        {lesson.title}
+                      {/* Checkbox */}
+                      <input
+                        type="checkbox"
+                        checked={!!isStepDone}
+                        onChange={() => {}}
+                        className="mt-1 w-4 h-4 rounded border-[#232d3f] bg-[#0c1017] text-sky-500 focus:ring-0 cursor-pointer"
+                      />
+
+                      {/* Nội dung Bước */}
+                      <div className="flex-1">
+                        <div className="flex items-center space-x-2 mb-1.5">
+                          <span className="px-2 py-0.5 text-[10px] font-mono font-bold bg-[#18202d] text-sky-400 border border-[#2d3a4f] rounded">
+                            BƯỚC {idx + 1}
+                          </span>
+                          <h4 className="text-xs font-bold text-white">
+                            {step.title}
+                          </h4>
+                        </div>
+
+                        {/* Thao tác & Lệnh */}
+                        <div className="relative group/box mb-2">
+                          <div className="text-xs text-slate-200 leading-relaxed font-mono bg-[#0c1017] p-3 rounded-lg border border-[#232d3f] whitespace-pre-wrap">
+                            {step.action}
+                          </div>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              copyToClipboard(step.action, `step-${idx}`);
+                            }}
+                            className="absolute top-2 right-2 px-2 py-1 text-[10px] font-mono bg-[#18202d] hover:bg-[#232d3f] text-slate-300 border border-[#232d3f] rounded transition-opacity opacity-0 group-hover/box:opacity-100 flex items-center space-x-1"
+                          >
+                            <span>{copiedText === `step-${idx}` ? '✓ Đã copy' : 'Copy'}</span>
+                          </button>
+                        </div>
+
+                        {/* Kết quả mong đợi */}
+                        <div className="text-[11px] text-emerald-400 flex items-center space-x-1.5 font-medium">
+                          <span className="text-emerald-500">✓ Kết quả cần thấy:</span>
+                          <span>{step.expected}</span>
+                        </div>
                       </div>
-                      <span className="text-[10px] text-[#484f58] whitespace-nowrap mt-0.5">
-                        {lesson.minutes}p
-                      </span>
-                    </button>
+                    </div>
                   );
                 })}
               </div>
             </div>
-          ))}
-        </div>
 
-        {/* Footer Cột Trái: Thông tin học viên */}
-        <div className="p-3 border-t border-[#30363d] text-xs text-[#8b949e] flex items-center justify-between">
-          <div className="truncate">
-            <div className="text-[#c9d1d9] font-medium truncate">{name || 'Học viên BIM'}</div>
-            <div className="text-[10px] text-[#484f58] truncate">{email || 'BIM Coaching'}</div>
+            {/* 3. Tiêu chí Kiểm tra Chất lượng & Cảnh báo (2 Thẻ Card) */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {/* Tiêu chí nghiệm thu QA */}
+              <div className="p-4 rounded-xl border border-emerald-900/40 bg-emerald-950/15">
+                <div className="flex items-center space-x-2 text-emerald-400 font-semibold text-xs mb-2.5">
+                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+                  </svg>
+                  <span>TIÊU CHÍ KIỂM TRA CHẤT LƯỢNG (QA CHECK)</span>
+                </div>
+                <ul className="text-xs space-y-2 text-slate-200">
+                  {currentLesson.checks.map((chk, i) => (
+                    <li key={i} className="flex items-start space-x-2 bg-[#131822] p-2.5 rounded-lg border border-[#232d3f]/80">
+                      <span className="text-emerald-400 font-bold">✓</span>
+                      <span>{chk}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+
+              {/* Cảnh báo kỹ thuật & Lỗi thường gặp */}
+              <div className="p-4 rounded-xl border border-rose-900/40 bg-rose-950/15">
+                <div className="flex items-center space-x-2 text-rose-400 font-semibold text-xs mb-2.5">
+                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                  </svg>
+                  <span>CẢNH BÁO KỸ THUẬT & SAI SÓT THƯỜNG GẶP</span>
+                </div>
+                <div className="space-y-2 text-xs">
+                  {currentLesson.mistakes.map((m, i) => (
+                    <div key={i} className="p-2.5 rounded-lg bg-[#131822] border border-rose-900/30">
+                      <div className="text-rose-400 font-medium mb-1">⚠️ {m.symptom}</div>
+                      <div className="text-emerald-400">💡 Khắc phục: {m.fix}</div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            {/* 4. Bài tập Thực hành & Sản phẩm Bàn giao */}
+            <div className="p-4 rounded-xl border border-purple-900/40 bg-purple-950/15">
+              <div className="flex items-center space-x-2 text-purple-400 font-semibold text-xs mb-2">
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
+                </svg>
+                <span>BÀI TẬP THỰC HÀNH & SẢN PHẨM BÀN GIAO</span>
+              </div>
+              <div className="text-xs space-y-2 text-slate-200">
+                <div>
+                  <strong className="text-white">Yêu cầu thực hành:</strong> {currentLesson.exercise}
+                </div>
+                <div className="flex items-center space-x-2">
+                  <strong className="text-white">Sản phẩm nghiệm thu:</strong>
+                  <span className="px-2.5 py-0.5 rounded-md bg-[#131822] text-sky-400 border border-sky-800/60 font-mono text-xs">
+                    {currentLesson.deliverable}
+                  </span>
+                </div>
+              </div>
+            </div>
+
           </div>
-          <div className="w-2 h-2 rounded-full bg-[#238636]"></div>
-        </div>
-      </aside>
+        </main>
 
-      {/* CỘT GIỮA: NỘI DUNG BÀI HỌC THỰC HÀNH */}
-      <main className="flex-1 flex flex-col h-full overflow-hidden bg-[#0d1117]">
-        {/* Topbar Bài học */}
-        <div className="px-6 py-4 border-b border-[#30363d] bg-[#161b22]/50 flex items-center justify-between">
-          <div>
-            <div className="flex items-center gap-2 text-xs text-[#8b949e] mb-1">
-              <span>{currentLesson.software}</span>
-              <span>/</span>
-              <span>Chương {currentLesson.chapterOrder}</span>
-              <span>/</span>
-              <span className="text-[#58a6ff] font-medium">{currentLesson.id.toUpperCase()}</span>
+        {/* ─── CỘT PHẢI: GHI CHÚ, NGUỒN GDRIVE & HỎI AI (COLLAPSIBLE) ──────────── */}
+        {isRightPanelOpen && (
+          <aside className="w-96 border-l border-[#232d3f] bg-[#131822] flex flex-col shrink-0">
+            {/* Tab Headers */}
+            <div className="flex border-b border-[#232d3f] bg-[#0c1017]">
+              <button
+                onClick={() => setActiveTab('notes')}
+                className={`flex-1 py-3 text-xs font-semibold border-b-2 transition-colors flex items-center justify-center space-x-1.5 ${
+                  activeTab === 'notes'
+                    ? 'border-sky-500 text-sky-400 bg-[#131822]'
+                    : 'border-transparent text-slate-400 hover:text-slate-200'
+                }`}
+              >
+                <span>📝 Sổ tay Ghi chú</span>
+              </button>
+              <button
+                onClick={() => setActiveTab('sources')}
+                className={`flex-1 py-3 text-xs font-semibold border-b-2 transition-colors flex items-center justify-center space-x-1.5 ${
+                  activeTab === 'sources'
+                    ? 'border-sky-500 text-sky-400 bg-[#131822]'
+                    : 'border-transparent text-slate-400 hover:text-slate-200'
+                }`}
+              >
+                <span>📚 Nguồn GDrive</span>
+              </button>
+              <button
+                onClick={() => setActiveTab('ai')}
+                className={`flex-1 py-3 text-xs font-semibold border-b-2 transition-colors flex items-center justify-center space-x-1.5 ${
+                  activeTab === 'ai'
+                    ? 'border-sky-500 text-sky-400 bg-[#131822]'
+                    : 'border-transparent text-slate-400 hover:text-slate-200'
+                }`}
+              >
+                <span>🤖 Kỹ sư AI</span>
+              </button>
             </div>
-            <h2 className="text-lg font-bold text-[#f0f6fc]">{currentLesson.title}</h2>
-          </div>
-          <div className="flex items-center gap-3">
-            <span className="text-xs px-2.5 py-1 rounded bg-[#21262d] text-[#8b949e] border border-[#30363d]">
-              Thời lượng: {currentLesson.minutes} phút
-            </span>
-            <button
-              onClick={() => {
-                const isCurrentlyDone = lessonProgress[currentLesson.id] === 'completed';
-                const nextState = isCurrentlyDone ? 'practicing' : 'completed';
-                setLessonProgress((prev) => ({ ...prev, [currentLesson.id]: nextState }));
-                // Đồng bộ các bước
-                const updatedSteps = { ...completedSteps };
-                currentLesson.steps.forEach((_, idx) => {
-                  updatedSteps[`${currentLesson.id}-s${idx}`] = !isCurrentlyDone;
-                });
-                setCompletedSteps(updatedSteps);
-              }}
-              className={`px-3 py-1.5 text-xs font-semibold rounded transition-colors ${
-                lessonProgress[currentLesson.id] === 'completed'
-                  ? 'bg-[#238636] text-white hover:bg-[#2ea043]'
-                  : 'bg-[#21262d] text-[#c9d1d9] border border-[#30363d] hover:bg-[#30363d]'
-              }`}
-            >
-              {lessonProgress[currentLesson.id] === 'completed' ? '✓ Đã hoàn thành bài' : 'Đánh dấu hoàn thành'}
-            </button>
-          </div>
-        </div>
 
-        {/* Nội dung cuộn của bài học */}
-        <div className="flex-1 overflow-y-auto p-6 space-y-6 scrollbar-thin">
-          {/* Mục tiêu & Điều kiện */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="p-4 rounded-lg bg-[#161b22] border border-[#30363d]">
-              <h3 className="text-xs font-semibold text-[#58a6ff] uppercase tracking-wider mb-2 flex items-center gap-1.5">
-                <span>🎯</span> Mục tiêu bài học
-              </h3>
-              <p className="text-xs leading-relaxed text-[#c9d1d9]">{currentLesson.objective}</p>
-            </div>
-            <div className="p-4 rounded-lg bg-[#161b22] border border-[#30363d]">
-              <h3 className="text-xs font-semibold text-[#d29922] uppercase tracking-wider mb-2 flex items-center gap-1.5">
-                <span>📋</span> Điều kiện tiên quyết
-              </h3>
-              <ul className="text-xs space-y-1.5 text-[#8b949e]">
-                {currentLesson.prerequisites.map((p, i) => (
-                  <li key={i} className="flex items-start gap-1.5">
-                    <span className="text-[#d29922]">•</span>
-                    <span>{p}</span>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          </div>
-
-          {/* Sơ đồ nguyên lý SVG */}
-          {currentLesson.diagram && (
-            <div className="rounded-lg bg-[#161b22] border border-[#30363d] p-4">
-              <h3 className="text-xs font-semibold text-[#8b949e] uppercase tracking-wider mb-3 flex items-center gap-1.5">
-                <span>📐</span> Sơ đồ nguyên lý kỹ thuật
-              </h3>
-              <InstructionDiagram type={currentLesson.diagram} />
-            </div>
-          )}
-
-          {/* Bảng checklist từng bước thực hành */}
-          <div className="rounded-lg bg-[#161b22] border border-[#30363d] overflow-hidden">
-            <div className="px-4 py-3 bg-[#21262d]/60 border-b border-[#30363d] flex items-center justify-between">
-              <h3 className="text-xs font-semibold text-[#f0f6fc] uppercase tracking-wider flex items-center gap-2">
-                <span>🛠️</span> Các bước thao tác kỹ thuật ({currentLesson.steps.length} bước)
-              </h3>
-              <span className="text-[11px] text-[#8b949e]">Tick chọn từng bước khi làm xong</span>
-            </div>
-            <div className="divide-y divide-[#30363d]/50">
-              {currentLesson.steps.map((step, idx) => {
-                const stepKey = `${currentLesson.id}-s${idx}`;
-                const isStepDone = completedSteps[stepKey];
-                return (
-                  <div
-                    key={idx}
-                    onClick={() => toggleStep(stepKey)}
-                    className={`p-4 transition-colors cursor-pointer flex items-start gap-3.5 ${
-                      isStepDone ? 'bg-[#238636]/5' : 'hover:bg-[#21262d]/40'
-                    }`}
+            {/* Tab 1: Ghi chú cá nhân */}
+            {activeTab === 'notes' && (
+              <div className="flex-1 flex flex-col p-4 overflow-hidden">
+                <div className="flex items-center justify-between mb-2 text-xs font-mono">
+                  <span className="text-slate-400">Ghi chú cho {currentLesson.id.toUpperCase()}</span>
+                  <span className="text-[11px] text-emerald-400 font-medium">{saveStatus}</span>
+                </div>
+                <textarea
+                  value={currentNote}
+                  onChange={(e) => setCurrentNote(e.target.value)}
+                  placeholder="Ghi chép thông số kỹ thuật, mốc lý trình, tọa độ, lỗi gặp phải hoặc kinh nghiệm thực hành bài này..."
+                  className="flex-1 p-3 text-xs bg-[#0c1017] border border-[#232d3f] rounded-lg text-slate-200 resize-none focus:outline-none focus:border-sky-500 leading-relaxed font-mono"
+                />
+                <div className="mt-3 flex space-x-2">
+                  <button
+                    onClick={handleSaveNote}
+                    disabled={isSavingNote}
+                    className="flex-1 py-1.5 px-3 bg-gradient-to-r from-sky-600 to-blue-600 hover:from-sky-500 hover:to-blue-500 text-white text-xs font-semibold rounded-lg shadow-md shadow-sky-600/20 transition-all disabled:opacity-50"
                   >
-                    <input
-                      type="checkbox"
-                      checked={!!isStepDone}
-                      onChange={() => {}}
-                      className="mt-1 w-4 h-4 rounded border-[#30363d] bg-[#0d1117] text-[#238636] focus:ring-0 cursor-pointer"
-                    />
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2 mb-1">
-                        <span className="text-xs font-bold text-[#58a6ff]">Bước {idx + 1}:</span>
-                        <h4 className="text-xs font-semibold text-[#f0f6fc]">{step.title}</h4>
+                    {isSavingNote ? 'Đang lưu...' : 'Lưu ghi chú'}
+                  </button>
+                  <button
+                    onClick={() => {
+                      const blob = new Blob([currentNote], { type: 'text/markdown' });
+                      const url = URL.createObjectURL(blob);
+                      const a = document.createElement('a');
+                      a.href = url;
+                      a.download = `ghi-chu-${currentLesson.id}.md`;
+                      a.click();
+                    }}
+                    className="py-1.5 px-3 bg-[#18202d] hover:bg-[#232d3f] text-slate-300 text-xs font-medium rounded-lg border border-[#232d3f]"
+                  >
+                    Xuất MD
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* Tab 2: Nguồn tra cứu Google Drive */}
+            {activeTab === 'sources' && (
+              <div className="flex-1 overflow-y-auto p-4 space-y-3 scrollbar-thin">
+                <div className="text-xs text-slate-400 font-medium font-mono">
+                  Tài liệu đính kèm bài học này:
+                </div>
+                {currentLesson.sourceIds.map((srcId) => {
+                  const src = sources.find((s) => s.id === srcId);
+                  if (!src) return null;
+                  return (
+                    <div key={src.id} className="p-3 rounded-lg bg-[#0c1017] border border-[#232d3f] text-xs">
+                      <div className="flex items-center justify-between mb-1">
+                        <span className="font-semibold text-sky-400 truncate">{src.title}</span>
+                        <span className="text-[10px] px-1.5 py-0.5 rounded border bg-sky-950 text-sky-400 border-sky-800 font-mono">
+                          {src.kind === 'official' ? 'Chính thức' : 'GDrive'}
+                        </span>
                       </div>
-                      <p className="text-xs text-[#c9d1d9] leading-relaxed mb-2 font-mono bg-[#0d1117]/80 p-2.5 rounded border border-[#30363d]/40">
-                        {step.action}
-                      </p>
-                      <div className="text-[11px] text-[#7ee787] flex items-center gap-1.5">
-                        <span className="text-[#238636] font-bold">Kết quả cần thấy:</span>
-                        <span>{step.expected}</span>
-                      </div>
+                      <div className="text-slate-400 text-[11px] mb-2 font-mono">Phiên bản: {src.version}</div>
+                      <a
+                        href={src.url}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="text-[11px] text-sky-400 hover:text-sky-300 underline flex items-center space-x-1"
+                      >
+                        <span>Mở tài liệu / Mẫu bài tập</span> ↗
+                      </a>
+                    </div>
+                  );
+                })}
+
+                {/* Kho tài nguyên Google Drive G:\My Drive\my */}
+                <div className="pt-3 border-t border-[#232d3f]">
+                  <div className="text-xs text-slate-400 font-medium mb-2 font-mono">Kho tài nguyên Google Drive (G:\My Drive\my):</div>
+                  <div className="space-y-1.5 text-[11px]">
+                    <div className="p-2.5 rounded-lg bg-[#0c1017] border border-[#232d3f] text-slate-300">
+                      📁 <strong className="text-white">Hoctap/Civil Design:</strong> Bộ tài liệu học Civil Design phối hợp Navisworks / InfraWorks
+                    </div>
+                    <div className="p-2.5 rounded-lg bg-[#0c1017] border border-[#232d3f] text-slate-300">
+                      📁 <strong className="text-white">Hoctap/BIM-GIS:</strong> Hướng dẫn tích hợp mô hình BIM-GIS đa nền tảng
+                    </div>
+                    <div className="p-2.5 rounded-lg bg-[#0c1017] border border-[#232d3f] text-slate-300">
+                      📁 <strong className="text-white">GIS/Binh Dinh_DEM:</strong> Dữ liệu mô hình số độ cao DEM và bình đồ giải thửa
+                    </div>
+                    <div className="p-2.5 rounded-lg bg-[#0c1017] border border-[#232d3f] text-slate-300">
+                      📁 <strong className="text-white">Hoctap/VSI Academy:</strong> Thư viện mẫu Subassembly Composer và quy trình Corridor
                     </div>
                   </div>
-                );
-              })}
-            </div>
-          </div>
-
-          {/* Cách kiểm tra & Lỗi thường gặp */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {/* Cách kiểm tra */}
-            <div className="p-4 rounded-lg bg-[#161b22] border border-[#30363d]">
-              <h3 className="text-xs font-semibold text-[#7ee787] uppercase tracking-wider mb-2.5 flex items-center gap-1.5">
-                <span>🔍</span> Tiêu chí kiểm tra chất lượng
-              </h3>
-              <ul className="text-xs space-y-2 text-[#c9d1d9]">
-                {currentLesson.checks.map((chk, i) => (
-                  <li key={i} className="flex items-start gap-2 bg-[#0d1117]/50 p-2 rounded border border-[#30363d]/30">
-                    <span className="text-[#238636]">✓</span>
-                    <span>{chk}</span>
-                  </li>
-                ))}
-              </ul>
-            </div>
-
-            {/* Lỗi thường gặp */}
-            <div className="p-4 rounded-lg bg-[#161b22] border border-[#30363d]">
-              <h3 className="text-xs font-semibold text-[#f85149] uppercase tracking-wider mb-2.5 flex items-center gap-1.5">
-                <span>⚠️</span> Lỗi thường gặp & Cách khắc phục
-              </h3>
-              <div className="space-y-2.5 text-xs">
-                {currentLesson.mistakes.map((m, i) => (
-                  <div key={i} className="p-2.5 rounded bg-[#0d1117]/60 border border-[#f85149]/20">
-                    <div className="text-[#f85149] font-medium mb-1">❌ {m.symptom}</div>
-                    <div className="text-[#7ee787]">💡 Cách sửa: {m.fix}</div>
-                  </div>
-                ))}
+                </div>
               </div>
-            </div>
-          </div>
+            )}
 
-          {/* Bài tập & Sản phẩm bàn giao */}
-          <div className="p-4 rounded-lg bg-[#161b22] border border-[#30363d]">
-            <h3 className="text-xs font-semibold text-[#a371f7] uppercase tracking-wider mb-2 flex items-center gap-1.5">
-              <span>📦</span> Bài tập thực hành & Sản phẩm bàn giao
-            </h3>
-            <div className="text-xs space-y-2 text-[#c9d1d9]">
-              <div>
-                <strong className="text-[#f0f6fc]">Yêu cầu thực hành:</strong> {currentLesson.exercise}
-              </div>
-              <div>
-                <strong className="text-[#f0f6fc]">Sản phẩm cần nộp/nghiệm thu:</strong>{' '}
-                <span className="px-2 py-0.5 rounded bg-[#21262d] text-[#58a6ff] border border-[#30363d]">
-                  {currentLesson.deliverable}
-                </span>
-              </div>
-            </div>
-          </div>
-        </div>
-      </main>
-
-      {/* CỘT PHẢI: GHI CHÚ, TRA CỨU NGUỒN & HỎI AI */}
-      <aside className="w-96 flex-shrink-0 flex flex-col border-l border-[#30363d] bg-[#161b22]">
-        {/* Tab Headers */}
-        <div className="flex border-b border-[#30363d] bg-[#0d1117]">
-          <button
-            onClick={() => setActiveTab('notes')}
-            className={`flex-1 py-3 text-xs font-medium border-b-2 transition-colors ${
-              activeTab === 'notes'
-                ? 'border-[#58a6ff] text-[#58a6ff] bg-[#161b22]'
-                : 'border-transparent text-[#8b949e] hover:text-[#c9d1d9]'
-            }`}
-          >
-            📝 Ghi chú
-          </button>
-          <button
-            onClick={() => setActiveTab('sources')}
-            className={`flex-1 py-3 text-xs font-medium border-b-2 transition-colors ${
-              activeTab === 'sources'
-                ? 'border-[#58a6ff] text-[#58a6ff] bg-[#161b22]'
-                : 'border-transparent text-[#8b949e] hover:text-[#c9d1d9]'
-            }`}
-          >
-            📚 Nguồn tra cứu
-          </button>
-          <button
-            onClick={() => setActiveTab('ai')}
-            className={`flex-1 py-3 text-xs font-medium border-b-2 transition-colors ${
-              activeTab === 'ai'
-                ? 'border-[#58a6ff] text-[#58a6ff] bg-[#161b22]'
-                : 'border-transparent text-[#8b949e] hover:text-[#c9d1d9]'
-            }`}
-          >
-            🤖 Hỏi AI
-          </button>
-        </div>
-
-        {/* Tab 1: Ghi chú cá nhân */}
-        {activeTab === 'notes' && (
-          <div className="flex-1 flex flex-col p-4 overflow-hidden">
-            <div className="flex items-center justify-between mb-2 text-xs">
-              <span className="text-[#8b949e]">Ghi chú cho {currentLesson.id.toUpperCase()}</span>
-              <span className="text-[11px] text-[#238636] font-medium">{saveStatus}</span>
-            </div>
-            <textarea
-              value={currentNote}
-              onChange={(e) => setCurrentNote(e.target.value)}
-              placeholder="Ghi chép kinh nghiệm, thông số, mốc lý trình, tọa độ hoặc lưu ý khi thực hành..."
-              className="flex-1 p-3 text-xs bg-[#0d1117] border border-[#30363d] rounded-md text-[#c9d1d9] resize-none focus:outline-none focus:border-[#58a6ff] leading-relaxed font-mono"
-            />
-            <div className="mt-3 flex gap-2">
-              <button
-                onClick={handleSaveNote}
-                disabled={isSavingNote}
-                className="flex-1 py-1.5 px-3 bg-[#238636] hover:bg-[#2ea043] text-white text-xs font-semibold rounded transition-colors disabled:opacity-50"
-              >
-                {isSavingNote ? 'Đang lưu...' : 'Lưu ghi chú'}
-              </button>
-              <button
-                onClick={() => {
-                  const blob = new Blob([currentNote], { type: 'text/markdown' });
-                  const url = URL.createObjectURL(blob);
-                  const a = document.createElement('a');
-                  a.href = url;
-                  a.download = `ghi-chu-${currentLesson.id}.md`;
-                  a.click();
-                }}
-                className="py-1.5 px-3 bg-[#21262d] hover:bg-[#30363d] text-[#c9d1d9] text-xs font-medium rounded border border-[#30363d]"
-              >
-                Xuất MD
-              </button>
-            </div>
-          </div>
-        )}
-
-        {/* Tab 2: Nguồn tra cứu */}
-        {activeTab === 'sources' && (
-          <div className="flex-1 overflow-y-auto p-4 space-y-3 scrollbar-thin">
-            <div className="text-xs text-[#8b949e] mb-2 font-medium">
-              Tài liệu tham khảo liên quan bài học:
-            </div>
-            {currentLesson.sourceIds.map((srcId) => {
-              const src = sources.find((s) => s.id === srcId);
-              if (!src) return null;
-              return (
-                <div key={src.id} className="p-3 rounded-md bg-[#0d1117] border border-[#30363d] text-xs">
-                  <div className="flex items-center justify-between mb-1">
-                    <span className="font-semibold text-[#58a6ff] truncate">{src.title}</span>
-                    <span
-                      className={`text-[10px] px-1.5 py-0.2 rounded border ${
-                        src.kind === 'official'
-                          ? 'bg-[#1f6feb]/20 text-[#58a6ff] border-[#1f6feb]/40'
-                          : 'bg-[#238636]/20 text-[#7ee787] border-[#238636]/40'
+            {/* Tab 3: Hỏi đáp Kỹ sư AI */}
+            {activeTab === 'ai' && (
+              <div className="flex-1 flex flex-col p-4 overflow-hidden">
+                <div className="flex-1 overflow-y-auto space-y-3 mb-3 pr-1 scrollbar-thin">
+                  {aiChat.map((msg, i) => (
+                    <div
+                      key={i}
+                      className={`p-3 rounded-lg text-xs leading-relaxed ${
+                        msg.role === 'user'
+                          ? 'bg-sky-950/40 text-slate-200 border border-sky-800/50 ml-4'
+                          : 'bg-[#0c1017] text-slate-200 border border-[#232d3f] mr-4'
                       }`}
                     >
-                      {src.kind === 'official' ? 'Chính thức' : 'Google Drive'}
-                    </span>
-                  </div>
-                  <div className="text-[#8b949e] text-[11px] mb-2">Phiên bản: {src.version}</div>
-                  <a
-                    href={src.url}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="text-[11px] text-[#58a6ff] hover:underline flex items-center gap-1"
-                  >
-                    <span>Mở tài liệu</span> ↗
-                  </a>
-                </div>
-              );
-            })}
-
-            {/* Các tài nguyên Drive cố định */}
-            <div className="pt-3 border-t border-[#30363d]">
-              <div className="text-xs text-[#8b949e] font-medium mb-2">Thư mục Google Drive (G:\My Drive\my):</div>
-              <div className="space-y-1.5 text-[11px]">
-                <div className="p-2 rounded bg-[#0d1117]/60 border border-[#30363d]/50 text-[#c9d1d9]">
-                  📁 <strong>Hoctap/Civil Design:</strong> Tài liệu học Civil Design có Navisworks/InfraWorks
-                </div>
-                <div className="p-2 rounded bg-[#0d1117]/60 border border-[#30363d]/50 text-[#c9d1d9]">
-                  📁 <strong>Hoctap/BIM-GIS:</strong> Hướng dẫn tổng hợp mô hình BIM-GIS Google Gemini
-                </div>
-                <div className="p-2 rounded bg-[#0d1117]/60 border border-[#30363d]/50 text-[#c9d1d9]">
-                  📁 <strong>GIS/Binh Dinh_DEM:</strong> Dữ liệu mô hình địa hình số DEM
-                </div>
-                <div className="p-2 rounded bg-[#0d1117]/60 border border-[#30363d]/50 text-[#c9d1d9]">
-                  📁 <strong>Hoctap/VSI Academy:</strong> Quy trình kiểm soát Corridor Target
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Tab 3: Hỏi đáp AI Gemini */}
-        {activeTab === 'ai' && (
-          <div className="flex-1 flex flex-col p-4 overflow-hidden">
-            <div className="flex-1 overflow-y-auto space-y-3 mb-3 pr-1 scrollbar-thin">
-              {aiChat.map((msg, i) => (
-                <div
-                  key={i}
-                  className={`p-3 rounded-lg text-xs leading-relaxed ${
-                    msg.role === 'user'
-                      ? 'bg-[#1f6feb]/20 text-[#c9d1d9] border border-[#1f6feb]/40 ml-4'
-                      : 'bg-[#0d1117] text-[#c9d1d9] border border-[#30363d] mr-4'
-                  }`}
-                >
-                  <div className="font-semibold text-[11px] mb-1 text-[#8b949e]">
-                    {msg.role === 'user' ? 'Bạn' : 'Trợ lý AI Gemini'}
-                  </div>
-                  <div>{msg.text}</div>
-                  {msg.sources && msg.sources.length > 0 && (
-                    <div className="mt-2 pt-2 border-t border-[#30363d]/50 text-[10px] text-[#58a6ff]">
-                      📚 Nguồn dẫn: {msg.sources.join(' • ')}
+                      <div className="font-semibold text-[11px] mb-1 text-slate-400 font-mono">
+                        {msg.role === 'user' ? 'Kỹ sư' : 'Trợ lý AI BIM'}
+                      </div>
+                      <div className="whitespace-pre-wrap">{msg.text}</div>
+                      {msg.sources && msg.sources.length > 0 && (
+                        <div className="mt-2 pt-2 border-t border-[#232d3f] text-[10px] text-sky-400 font-mono">
+                          📚 Nguồn: {msg.sources.join(' • ')}
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                  {isAiLoading && (
+                    <div className="p-3 rounded-lg bg-[#0c1017] border border-[#232d3f] text-xs text-slate-400 animate-pulse font-mono">
+                      AI đang tra cứu tài liệu và đối soát nguồn...
                     </div>
                   )}
                 </div>
-              ))}
-              {isAiLoading && (
-                <div className="p-3 rounded-lg bg-[#0d1117] border border-[#30363d] text-xs text-[#8b949e] animate-pulse">
-                  Gemini đang tra cứu tài liệu và đối soát nguồn...
+
+                {/* Input Hỏi AI */}
+                <div className="border-t border-[#232d3f] pt-3 flex space-x-2">
+                  <input
+                    type="text"
+                    placeholder="Hỏi lỗi Civil 3D, tọa độ GIS, InfraWorks..."
+                    value={aiPrompt}
+                    onChange={(e) => setAiPrompt(e.target.value)}
+                    onKeyDown={(e) => e.key === 'Enter' && handleSendAi()}
+                    className="flex-1 px-3 py-1.5 text-xs bg-[#0c1017] border border-[#232d3f] rounded-lg text-slate-200 placeholder-slate-500 focus:outline-none focus:border-sky-500"
+                  />
+                  <button
+                    onClick={handleSendAi}
+                    disabled={isAiLoading || !aiPrompt.trim()}
+                    className="px-3.5 py-1.5 bg-gradient-to-r from-sky-600 to-blue-600 hover:from-sky-500 hover:to-blue-500 text-white text-xs font-semibold rounded-lg transition-all disabled:opacity-50"
+                  >
+                    Gửi
+                  </button>
                 </div>
-              )}
+              </div>
+            )}
+          </aside>
+        )}
+      </div>
+
+      {/* ─── MODAL: SEARCH QUICK SWITCHER (Ctrl + K) ────────────────────────── */}
+      {isSearchModalOpen && (
+        <div
+          className="fixed inset-0 bg-black/75 backdrop-blur-sm z-50 flex items-start justify-center pt-20 px-4"
+          onClick={() => setIsSearchModalOpen(false)}
+        >
+          <div
+            className="bg-[#131822] border border-[#2d3a4f] rounded-xl shadow-2xl w-full max-w-2xl overflow-hidden flex flex-col"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Search Input Bar */}
+            <div className="p-3.5 border-b border-[#232d3f] flex items-center space-x-3 bg-[#18202d]">
+              <svg className="w-5 h-5 text-sky-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+              </svg>
+              <input
+                ref={searchInputRef}
+                type="text"
+                value={modalSearchQuery}
+                onChange={(e) => setModalSearchQuery(e.target.value)}
+                placeholder="Nhập từ khóa (vd: corridor, super elevation, navisworks, qgis, tọa độ...)"
+                className="flex-1 bg-transparent text-sm text-white placeholder-slate-400 focus:outline-none font-sans"
+              />
+              <kbd
+                onClick={() => setIsSearchModalOpen(false)}
+                className="px-1.5 py-0.5 text-[10px] bg-[#0c1017] text-slate-400 border border-[#232d3f] rounded cursor-pointer hover:bg-slate-800 font-mono"
+              >
+                ESC
+              </kbd>
             </div>
 
-            {/* Input Hỏi AI */}
-            <div className="border-t border-[#30363d] pt-3 flex gap-2">
-              <input
-                type="text"
-                placeholder="Hỏi về lỗi Civil 3D, tọa độ GIS, InfraWorks..."
-                value={aiPrompt}
-                onChange={(e) => setAiPrompt(e.target.value)}
-                onKeyDown={(e) => e.key === 'Enter' && handleSendAi()}
-                className="flex-1 px-3 py-1.5 text-xs bg-[#0d1117] border border-[#30363d] rounded-md text-[#c9d1d9] placeholder-[#484f58] focus:outline-none focus:border-[#58a6ff]"
-              />
-              <button
-                onClick={handleSendAi}
-                disabled={isAiLoading || !aiPrompt.trim()}
-                className="px-3 py-1.5 bg-[#1f6feb] hover:bg-[#388bfd] text-white text-xs font-semibold rounded transition-colors disabled:opacity-50"
-              >
-                Gửi
-              </button>
+            {/* Results List */}
+            <div className="max-h-96 overflow-y-auto p-2 space-y-1 divide-y divide-[#1e293b]/50">
+              {modalSearchQuery.trim() === '' ? (
+                <div className="p-6 text-center text-xs text-slate-400 font-sans">
+                  Gõ từ khóa để tra cứu siêu tốc trong toàn bộ 24 chương & 80 bài học thực hành...
+                </div>
+              ) : modalSearchResults.length === 0 ? (
+                <div className="p-6 text-center text-xs text-rose-400 font-sans">
+                  Không tìm thấy bài học nào với từ khóa "{modalSearchQuery}".
+                </div>
+              ) : (
+                modalSearchResults.map((l) => (
+                  <div
+                    key={l.id}
+                    onClick={() => {
+                      setActiveLessonId(l.id);
+                      setIsSearchModalOpen(false);
+                    }}
+                    className="p-3 rounded-lg hover:bg-[#18202d] cursor-pointer transition-colors flex items-start space-x-3"
+                  >
+                    <span className="px-2 py-0.5 text-[10px] font-mono font-bold bg-sky-950 text-sky-400 border border-sky-800 rounded mt-0.5">
+                      {l.id.toUpperCase()}
+                    </span>
+                    <div className="flex-1">
+                      <div className="text-xs font-semibold text-white mb-0.5">
+                        {l.title}
+                      </div>
+                      <div className="text-[11px] text-slate-400 line-clamp-1">
+                        {l.objective}
+                      </div>
+                      <div className="flex items-center space-x-2 mt-1 text-[10px] font-mono text-slate-500">
+                        <span className="text-sky-400">{l.software}</span>
+                        <span>•</span>
+                        <span>Chương {l.chapterOrder}</span>
+                        <span>•</span>
+                        <span>{l.minutes} phút</span>
+                      </div>
+                    </div>
+                  </div>
+                ))
+              )}
             </div>
           </div>
-        )}
-      </aside>
+        </div>
+      )}
+
     </div>
   );
 }
